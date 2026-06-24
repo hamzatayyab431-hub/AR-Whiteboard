@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
 import type { Point } from '../store/useWhiteboardStore';
 import { useHandPose } from '../hooks/useHandPose';
-import { classifyGesture, Landmark, distance, getGestureDetails } from '../utils/gestures';
+import { classifyGesture, distance, getGestureDetails } from '../utils/gestures';
+import type { Landmark } from '../utils/gestures';
 import { Camera, CameraOff, Sparkles, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 

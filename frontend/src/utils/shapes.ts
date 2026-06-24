@@ -1,5 +1,5 @@
 import { Point, ShapeType, ShapeObject } from '../store/useWhiteboardStore';
-import { Landmark } from './gestures';
+
 
 // Helper to calculate Euclidean distance between two 2D points
 function getDistance(p1: Point, p2: Point): number {
