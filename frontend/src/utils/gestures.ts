@@ -1,4 +1,4 @@
-import { Point, CalibrationData } from '../store/useWhiteboardStore';
+import type { Point, CalibrationData } from '../store/useWhiteboardStore';
 
 export interface Landmark {
   x: number;
