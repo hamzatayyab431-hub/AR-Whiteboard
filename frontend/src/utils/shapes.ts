@@ -1,4 +1,4 @@
-import { Point, ShapeType, ShapeObject } from '../store/useWhiteboardStore';
+import type { Point, ShapeType, ShapeObject } from '../store/useWhiteboardStore';
 
 
 // Helper to calculate Euclidean distance between two 2D points
