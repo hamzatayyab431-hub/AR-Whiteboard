@@ -24,19 +24,19 @@ A production-quality, touchless **AR Whiteboard** that allows users to write, dr
 
 ```mermaid
 graph TD
-    subgraph Client Space (React + TypeScript + Zustand)
-        Cam[Webcam Capture] --> WASM[MediaPipe Tasks WASM]
-        WASM --> Gestures[Landmark Gesture Classifier]
-        Gestures --> Store[Zustand State Store]
-        Store --> Canvas[Infinite Canvas Renderer]
-        Store --> Overlay[Diagnostics HUD]
+    subgraph ClientSpace["Client Space (React + TypeScript + Zustand)"]
+        Cam["Webcam Capture"] --> WASM["MediaPipe Tasks WASM"]
+        WASM --> Gestures["Landmark Gesture Classifier"]
+        Gestures --> Store["Zustand State Store"]
+        Store --> Canvas["Infinite Canvas Renderer"]
+        Store --> Overlay["Diagnostics HUD"]
     end
     
-    subgraph Server Space (FastAPI + Async Python)
-        API[FastAPI Router] <--> DB[(SQLite DB)]
-        API --> OCR[OCR Pipeline: Deskew + EasyOCR/Tesseract]
-        API --> Math[SymPy Math Solver]
-        API --> Export[PIL & SVG Export Engines]
+    subgraph ServerSpace["Server Space (FastAPI + Async Python)"]
+        API["FastAPI Router"] <--> DB[("SQLite DB")]
+        API --> OCR["OCR Pipeline: Deskew + EasyOCR/Tesseract"]
+        API --> Math["SymPy Math Solver"]
+        API --> Export["PIL & SVG Export Engines"]
     end
     
     Store <-->|HTTP REST APIs| API
