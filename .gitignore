@@ -1,0 +1,21 @@
+# Python environment & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+ar_whiteboard.db
+logs/
+
+# Node environment & builds
+node_modules/
+dist/
+.env
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
