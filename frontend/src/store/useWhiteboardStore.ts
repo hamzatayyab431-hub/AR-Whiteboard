@@ -64,10 +64,13 @@ interface WhiteboardState {
   selectedShapeType: ShapeType;
   
   // Tracking & Calibration State
+  pointerPos: Point;
   gesture: string;
   confidence: number;
   calibrationState: 'uncalibrated' | 'calibrating_palm' | 'calibrating_pinch' | 'calibrated';
   calibrationData: CalibrationData;
+  smoothingMinCutoff: number;
+  smoothingBeta: number;
   
   // Performance Overlay Metrics
   fps: number;
@@ -106,9 +109,12 @@ interface WhiteboardState {
   setPan: (pan: Point | ((p: Point) => Point)) => void;
   toggleGrid: () => void;
   
+  setPointerPos: (pos: Point) => void;
   setGesture: (gesture: string, confidence: number) => void;
   setCalibrationState: (state: 'uncalibrated' | 'calibrating_palm' | 'calibrating_pinch' | 'calibrated') => void;
   setCalibrationData: (data: CalibrationData) => void;
+  setSmoothingMinCutoff: (cutoff: number) => void;
+  setSmoothingBeta: (beta: number) => void;
   
   setPerformanceMetrics: (metrics: Partial<{ fps: number; gestureFps: number; wasmLatency: number; backendLatency: number }>) => void;
   setSessionMeta: (id: string, name: string) => void;
@@ -132,10 +138,13 @@ const defaultState = {
   brushSize: 5,
   opacity: 1.0,
   selectedShapeType: 'rect' as ShapeType,
+  pointerPos: { x: 0, y: 0 },
   gesture: 'Idle',
   confidence: 0,
   calibrationState: 'uncalibrated' as const,
   calibrationData: { handSize: 150, pinchThreshold: 30 },
+  smoothingMinCutoff: 0.5,
+  smoothingBeta: 0.04,
   fps: 0,
   gestureFps: 0,
   wasmLatency: 0,
@@ -246,9 +255,12 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   
   toggleGrid: () => set((state) => ({ gridVisible: !state.gridVisible })),
   
+  setPointerPos: (pointerPos) => set({ pointerPos }),
   setGesture: (gesture, confidence) => set({ gesture, confidence }),
   setCalibrationState: (calibrationState) => set({ calibrationState }),
   setCalibrationData: (calibrationData) => set({ calibrationData }),
+  setSmoothingMinCutoff: (smoothingMinCutoff) => set({ smoothingMinCutoff }),
+  setSmoothingBeta: (smoothingBeta) => set({ smoothingBeta }),
   
   setPerformanceMetrics: (metrics) => set((state) => ({ ...state, ...metrics })),
   

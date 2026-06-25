@@ -2,15 +2,10 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
 import type { Point, CanvasObject, StrokeObject, ShapeObject, TextObject } from '../store/useWhiteboardStore';
 import { PointSmoother } from '../utils/smoothing';
-import { detectAndFitShape } from '../utils/shapes';
-import { Sparkles, Maximize, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { detectAndFitShape, getDistance } from '../utils/shapes';
+import { Maximize, ZoomIn, ZoomOut } from 'lucide-react';
 
-interface WhiteboardCanvasProps {
-  pointerPos: Point;
-  gesture: string;
-}
-
-export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, gesture }) => {
+export const WhiteboardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   
@@ -30,7 +25,10 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
     setPan,
     gridVisible,
     selectedObjectId,
-    useWhiteboardStore: store
+    pointerPos,
+    gesture,
+    smoothingMinCutoff,
+    smoothingBeta
   } = useWhiteboardStore();
 
   // Local drawing/dragging states
@@ -62,6 +60,98 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
       x: (screenX - pan.x) / zoom,
       y: (screenY - pan.y) / zoom
     };
+  };
+
+  // Draws a path of points using smooth quadratic Bezier curves
+  const drawBezierPath = (ctx: CanvasRenderingContext2D, points: Point[]) => {
+    if (points.length < 2) return;
+    ctx.moveTo(points[0].x, points[0].y);
+    if (points.length === 2) {
+      ctx.lineTo(points[1].x, points[1].y);
+      return;
+    }
+    for (let i = 1; i < points.length - 1; i++) {
+      const xc = (points[i].x + points[i + 1].x) / 2;
+      const yc = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+  };
+
+  // Sync references to state to prevent stale closure bugs in point tracking effects
+  const activePointsRef = useRef<Point[]>([]);
+  const isDrawingRef = useRef(false);
+  const toolRef = useRef(tool);
+  const colorRef = useRef(color);
+  const brushSizeRef = useRef(brushSize);
+  const opacityRef = useRef(opacity);
+  const selectedShapeTypeRef = useRef(selectedShapeType);
+  const graceTimerRef = useRef<any | null>(null);
+
+  useEffect(() => { activePointsRef.current = activePoints; }, [activePoints]);
+  useEffect(() => { isDrawingRef.current = isDrawing; }, [isDrawing]);
+  useEffect(() => { toolRef.current = tool; }, [tool]);
+  useEffect(() => { colorRef.current = color; }, [color]);
+  useEffect(() => { brushSizeRef.current = brushSize; }, [brushSize]);
+  useEffect(() => { opacityRef.current = opacity; }, [opacity]);
+  useEffect(() => { selectedShapeTypeRef.current = selectedShapeType; }, [selectedShapeType]);
+
+  // Sync PointSmoother parameters dynamically
+  useEffect(() => {
+    smootherRef.current.updateParams(smoothingMinCutoff, smoothingBeta);
+  }, [smoothingMinCutoff, smoothingBeta]);
+
+  // Clears any active hand-drawing grace timer on unmount
+  useEffect(() => {
+    return () => {
+      if (graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Helper to finalize the current active stroke and persist it
+  const finalizeActiveStroke = () => {
+    if (!isDrawingRef.current) return;
+    setIsDrawing(false);
+    
+    const pts = activePointsRef.current;
+    if (pts.length > 2) {
+      const boundingBox = detectAndFitShape(pts);
+      const enableShapeSnapping = useWhiteboardStore.getState().featureFlags.ai_shapes;
+      
+      if (toolRef.current === 'shape') {
+        const shapeObj: ShapeObject = {
+          id: crypto.randomUUID(),
+          type: 'shape',
+          ...boundingBox,
+          shapeType: selectedShapeTypeRef.current,
+          color: colorRef.current,
+          strokeWidth: brushSizeRef.current
+        };
+        addObject(shapeObj);
+      } else if (toolRef.current === 'brush' && enableShapeSnapping && boundingBox.shapeType !== 'line') {
+        const shapeObj: ShapeObject = {
+          id: crypto.randomUUID(),
+          type: 'shape',
+          ...boundingBox,
+          color: colorRef.current,
+          strokeWidth: brushSizeRef.current
+        };
+        addObject(shapeObj);
+      } else {
+        const strokeObj: StrokeObject = {
+          id: crypto.randomUUID(),
+          type: 'stroke',
+          points: pts,
+          color: colorRef.current,
+          width: brushSizeRef.current,
+          opacity: opacityRef.current
+        };
+        addObject(strokeObj);
+      }
+    }
+    setActivePoints([]);
   };
 
   // 1. Core Render Loop
@@ -101,10 +191,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
       ctx.lineJoin = 'round';
       ctx.globalAlpha = opacity;
       
-      ctx.moveTo(activePoints[0].x, activePoints[0].y);
-      for (let i = 1; i < activePoints.length; i++) {
-        ctx.lineTo(activePoints[i].x, activePoints[i].y);
-      }
+      drawBezierPath(ctx, activePoints);
       ctx.stroke();
     }
 
@@ -166,10 +253,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
         ctx.lineWidth = obj.width;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
-        }
+        drawBezierPath(ctx, points);
         ctx.stroke();
       } 
       
@@ -284,12 +368,25 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
 
   // 2. Gesture Drawing Logic (runs whenever hand pointer position changes)
   useEffect(() => {
-    if (pointerPos.x === 0 && pointerPos.y === 0) return;
+    if (pointerPos.x === 0 && pointerPos.y === 0) {
+      if (isDrawing && !graceTimerRef.current) {
+        graceTimerRef.current = setTimeout(() => {
+          finalizeActiveStroke();
+          graceTimerRef.current = null;
+        }, 250);
+      }
+      return;
+    }
     const scr = getScreenCoords(pointerPos);
     const canvasPt = screenToCanvas(scr.x, scr.y);
 
     // A. Handle Drawing Mode
     if (gesture === 'Draw') {
+      if (graceTimerRef.current) {
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+      }
+
       if (!isDrawing) {
         smootherRef.current.reset();
         const smoothed = smootherRef.current.smooth(canvasPt.x, canvasPt.y);
@@ -297,55 +394,26 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
         setActivePoints([smoothed]);
       } else {
         const smoothed = smootherRef.current.smooth(canvasPt.x, canvasPt.y);
-        setActivePoints(prev => [...prev, smoothed]);
+        const lastPt = activePoints[activePoints.length - 1];
+        if (lastPt && getDistance(lastPt, smoothed) > 150) {
+          // Hand tracking resumed far away; finalize the previous stroke and start a new one
+          finalizeActiveStroke();
+          setIsDrawing(true);
+          setActivePoints([smoothed]);
+        } else {
+          setActivePoints(prev => [...prev, smoothed]);
+        }
       }
     } 
     
-    // Draw gesture ended (finger lifted)
+    // Draw gesture ended (finger lifted) - wait for grace period
     else if (isDrawing && gesture !== 'Draw') {
-      setIsDrawing(false);
-      if (activePoints.length > 2) {
-        const boundingBox = detectAndFitShape(activePoints);
-        
-        // Shape snapping flag
-        const enableShapeSnapping = useWhiteboardStore.getState().featureFlags.ai_shapes;
-        
-        if (tool === 'shape') {
-          // Explicit shape tool
-          const shapeObj: ShapeObject = {
-            id: crypto.randomUUID(),
-            type: 'shape',
-            shapeType: selectedShapeType,
-            ...boundingBox,
-            color,
-            strokeWidth: brushSize
-          };
-          addObject(shapeObj);
-        } else if (tool === 'brush' && enableShapeSnapping && boundingBox.shapeType !== 'line') {
-          // AI snaps sketch to circle/rect/triangle/arrow
-          const shapeObj: ShapeObject = {
-            id: crypto.randomUUID(),
-            type: 'shape',
-            shapeType: boundingBox.shapeType,
-            ...boundingBox,
-            color,
-            strokeWidth: brushSize
-          };
-          addObject(shapeObj);
-        } else {
-          // Freehand stroke
-          const strokeObj: StrokeObject = {
-            id: crypto.randomUUID(),
-            type: 'stroke',
-            points: activePoints,
-            color,
-            width: brushSize,
-            opacity
-          };
-          addObject(strokeObj);
-        }
+      if (!graceTimerRef.current) {
+        graceTimerRef.current = setTimeout(() => {
+          finalizeActiveStroke();
+          graceTimerRef.current = null;
+        }, 250);
       }
-      setActivePoints([]);
     }
 
     // B. Handle Eraser Gesture
@@ -466,6 +534,11 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
       return;
     }
 
+    if (graceTimerRef.current) {
+      clearTimeout(graceTimerRef.current);
+      graceTimerRef.current = null;
+    }
+
     if (tool === 'select') {
       const hit = findObjectAt(canvasPt.x, canvasPt.y, 15);
       if (hit) {
@@ -541,44 +614,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({ pointerPos, 
     setIsDraggingObject(false);
     
     if (isDrawing) {
-      setIsDrawing(false);
-      if (activePoints.length > 2) {
-        const boundingBox = detectAndFitShape(activePoints);
-        const enableShapeSnapping = useWhiteboardStore.getState().featureFlags.ai_shapes;
-        
-        if (tool === 'shape') {
-          const shapeObj: ShapeObject = {
-            id: crypto.randomUUID(),
-            type: 'shape',
-            shapeType: selectedShapeType,
-            ...boundingBox,
-            color,
-            strokeWidth: brushSize
-          };
-          addObject(shapeObj);
-        } else if (tool === 'brush' && enableShapeSnapping && boundingBox.shapeType !== 'line') {
-          const shapeObj: ShapeObject = {
-            id: crypto.randomUUID(),
-            type: 'shape',
-            shapeType: boundingBox.shapeType,
-            ...boundingBox,
-            color,
-            strokeWidth: brushSize
-          };
-          addObject(shapeObj);
-        } else {
-          const strokeObj: StrokeObject = {
-            id: crypto.randomUUID(),
-            type: 'stroke',
-            points: activePoints,
-            color,
-            width: brushSize,
-            opacity
-          };
-          addObject(strokeObj);
-        }
-      }
-      setActivePoints([]);
+      finalizeActiveStroke();
     }
   };
 

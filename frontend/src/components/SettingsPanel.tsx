@@ -9,8 +9,7 @@ import {
   ToggleLeft, 
   ToggleRight, 
   HelpCircle,
-  TrendingUp,
-  Cpu
+  TrendingUp
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -29,7 +28,11 @@ export const SettingsPanel: React.FC = () => {
     trackingEnabled,
     setTrackingEnabled,
     featureFlags,
-    setFeatureFlags
+    setFeatureFlags,
+    smoothingMinCutoff,
+    setSmoothingMinCutoff,
+    smoothingBeta,
+    setSmoothingBeta
   } = useWhiteboardStore();
 
   const handleCalibrationStart = () => {
@@ -140,6 +143,57 @@ export const SettingsPanel: React.FC = () => {
               <ToggleLeft size={28} className="text-gray-500" />
             )}
           </button>
+        </div>
+      </div>
+
+      {/* Tracking Smoothing Settings */}
+      <div className="flex flex-col gap-3 border-t border-darkBorder pt-3">
+        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1">
+          <TrendingUp size={12} /> Tracking filter
+        </span>
+        
+        {/* Min Cutoff (Jitter) */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-gray-400">
+            <span className="flex items-center gap-1">
+              Jitter Filter
+              <span title="Lower values reduce hand tremor/jitter but increase lag.">
+                <HelpCircle size={10} className="text-gray-500" />
+              </span>
+            </span>
+            <span className="font-bold text-blue-400">{smoothingMinCutoff.toFixed(2)} Hz</span>
+          </div>
+          <input 
+            type="range" 
+            min="0.05" 
+            max="2.00" 
+            step="0.05"
+            value={smoothingMinCutoff}
+            onChange={(e) => setSmoothingMinCutoff(parseFloat(e.target.value))}
+            className="w-full h-1 bg-darkBorder rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
+        </div>
+
+        {/* Beta (Lag Reduction) */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-gray-400">
+            <span className="flex items-center gap-1">
+              Lag Reduction
+              <span title="Higher values reduce tracking delay/lag at high speeds.">
+                <HelpCircle size={10} className="text-gray-500" />
+              </span>
+            </span>
+            <span className="font-bold text-blue-400">{smoothingBeta.toFixed(3)}</span>
+          </div>
+          <input 
+            type="range" 
+            min="0.001" 
+            max="0.200" 
+            step="0.005"
+            value={smoothingBeta}
+            onChange={(e) => setSmoothingBeta(parseFloat(e.target.value))}
+            className="w-full h-1 bg-darkBorder rounded-lg appearance-none cursor-pointer accent-blue-500"
+          />
         </div>
       </div>
 

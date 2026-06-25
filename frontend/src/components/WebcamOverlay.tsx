@@ -1,17 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
-import type { Point } from '../store/useWhiteboardStore';
 import { useHandPose } from '../hooks/useHandPose';
 import { classifyGesture, distance, getGestureDetails } from '../utils/gestures';
 import type { Landmark } from '../utils/gestures';
 import { Camera, CameraOff, Sparkles, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
-interface WebcamOverlayProps {
-  onPointerMove: (pt: Point, gesture: string) => void;
-}
-
-export const WebcamOverlay: React.FC<WebcamOverlayProps> = ({ onPointerMove }) => {
+export const WebcamOverlay: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameId = useRef<number | null>(null);
@@ -21,6 +16,7 @@ export const WebcamOverlay: React.FC<WebcamOverlayProps> = ({ onPointerMove }) =
   const {
     gesture,
     setGesture,
+    setPointerPos,
     calibrationState,
     setCalibrationState,
     calibrationData,
@@ -30,9 +26,7 @@ export const WebcamOverlay: React.FC<WebcamOverlayProps> = ({ onPointerMove }) =
     setPerformanceMetrics,
     undo,
     redo,
-    clearCanvas,
-    setObjects,
-    objects
+    clearCanvas
   } = useWhiteboardStore();
 
   const { isLoading: modelLoading, error: modelError, detectHands } = useHandPose();
@@ -135,7 +129,7 @@ export const WebcamOverlay: React.FC<WebcamOverlayProps> = ({ onPointerMove }) =
         const pointerX = (1 - indexTip.x);
         const pointerY = indexTip.y;
         
-        onPointerMove({ x: pointerX, y: pointerY }, classification.gesture);
+        setPointerPos({ x: pointerX, y: pointerY });
 
         // 4. Handle state machine (Calibration & Debounced Actions)
         handleStateEvents(classification.gesture, handLandmarks);
@@ -220,7 +214,7 @@ export const WebcamOverlay: React.FC<WebcamOverlayProps> = ({ onPointerMove }) =
       if (currentGesture === 'Eraser') {
         const wrist = landmarks[0];
         const middleTip = landmarks[12];
-        const size = distance(wrist, middleTip) * 1000; // virtual scale
+        const size = distance(wrist, middleTip, true) * 1000; // virtual scale
         
         // Save intermediate palm calibration
         setCalibrationData({
@@ -238,7 +232,7 @@ export const WebcamOverlay: React.FC<WebcamOverlayProps> = ({ onPointerMove }) =
       if (currentGesture === 'Pinch') {
         const thumbTip = landmarks[4];
         const indexTip = landmarks[8];
-        const dist = distance(thumbTip, indexTip) * 1000;
+        const dist = distance(thumbTip, indexTip, true) * 1000;
         
         setCalibrationData({
           handSize: calibrationData.handSize,

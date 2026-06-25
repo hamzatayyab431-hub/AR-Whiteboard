@@ -1,20 +1,13 @@
 import React from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
-import { getGestureDetails } from '../utils/gestures';
 import { 
   Keyboard, 
-  HelpCircle, 
-  Cpu, 
-  Activity, 
-  Settings, 
   Compass 
 } from 'lucide-react';
 
 export const StatusBar: React.FC = () => {
   const {
     tool,
-    gesture,
-    backendStatus,
     calibrationState,
     calibrationData,
     objects

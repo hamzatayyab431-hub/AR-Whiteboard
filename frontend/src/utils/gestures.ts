@@ -1,4 +1,4 @@
-import type { Point, CalibrationData } from '../store/useWhiteboardStore';
+import type { CalibrationData } from '../store/useWhiteboardStore';
 
 export interface Landmark {
   x: number;
@@ -38,14 +38,12 @@ export function classifyGesture(
   const wrist = l[0];
   
   // Finger MCPs (Knuckles)
-  const thumbMCP = l[2];
   const indexMCP = l[5];
   const middleMCP = l[9];
   const ringMCP = l[13];
   const pinkyMCP = l[17];
   
   // Finger PIPs
-  const thumbIP = l[3];
   const indexPIP = l[6];
   const middlePIP = l[10];
   const ringPIP = l[14];
@@ -59,27 +57,25 @@ export function classifyGesture(
   const pinkyTip = l[20];
 
   // Calculate current hand size: wrist to middle finger MCP + MCP to middle finger tip
-  const currentHandSize = distance(wrist, middleMCP) + distance(middleMCP, middleTip);
+  const currentHandSize = distance(wrist, middleMCP, true) + distance(middleMCP, middleTip, true);
   
   // Adjust thresholds based on calibration ratio
   // If the user's hand is closer/further, we scale thresholds relative to calibration
   const scaleRatio = currentHandSize / calibration.handSize;
   const calibratedPinchThreshold = calibration.pinchThreshold * scaleRatio;
 
-  // 1. Calculate Finger Extension States
   // A finger is extended if the distance from knuckles to tip is significantly
   // larger than the distance from knuckles to joint PIP.
-  const isIndexExtended = distance(indexMCP, indexTip) > distance(indexMCP, indexPIP) * 1.15;
-  const isMiddleExtended = distance(middleMCP, middleTip) > distance(middleMCP, middlePIP) * 1.15;
-  const isRingExtended = distance(ringMCP, ringTip) > distance(ringMCP, ringPIP) * 1.15;
-  const isPinkyExtended = distance(pinkyMCP, pinkyTip) > distance(pinkyMCP, pinkyPIP) * 1.15;
+  const isIndexExtended = distance(indexMCP, indexTip, true) > distance(indexMCP, indexPIP, true) * 1.65;
+  const isMiddleExtended = distance(middleMCP, middleTip, true) > distance(middleMCP, middlePIP, true) * 1.65;
+  const isRingExtended = distance(ringMCP, ringTip, true) > distance(ringMCP, ringPIP, true) * 1.65;
+  const isPinkyExtended = distance(pinkyMCP, pinkyTip, true) > distance(pinkyMCP, pinkyPIP, true) * 1.65;
   
   // Thumb extension is calculated by its distance from the index finger MCP knuckle and wrist
-  const isThumbExtended = distance(thumbTip, indexMCP) > 100 * scaleRatio;
+  const isThumbExtended = distance(thumbTip, indexMCP, true) > 100 * scaleRatio;
 
   // 2. Calculate Distances between Tips for Pinches/OK gestures
-  const thumbIndexDist = distance(thumbTip, indexTip);
-  const thumbMiddleDist = distance(thumbTip, middleTip);
+  const thumbIndexDist = distance(thumbTip, indexTip, true);
 
   // Check if Thumb and Index are pinching
   const isPinching = thumbIndexDist < calibratedPinchThreshold;

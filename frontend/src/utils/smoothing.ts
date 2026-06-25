@@ -56,6 +56,11 @@ export class OneEuroFilter {
     this.dxPrev = 0;
     this.tPrev = null;
   }
+
+  public updateParams(minCutoff: number, beta: number): void {
+    this.minCutoff = minCutoff;
+    this.beta = beta;
+  }
 }
 
 export class PointSmoother {
@@ -77,6 +82,11 @@ export class PointSmoother {
   public reset(): void {
     this.filterX.reset();
     this.filterY.reset();
+  }
+
+  public updateParams(minCutoff: number, beta: number): void {
+    this.filterX.updateParams(minCutoff, beta);
+    this.filterY.updateParams(minCutoff, beta);
   }
 }
 

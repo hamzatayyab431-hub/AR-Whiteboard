@@ -12,7 +12,6 @@ import {
   Edit3,
   Check,
   X,
-  Copy,
   Plus
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -26,10 +25,7 @@ export const Toolbar: React.FC = () => {
     addObject,
     activeSessionId,
     activeSessionName,
-    setSessionMeta,
-    backendStatus,
-    setBackendStatus,
-    setObjects
+    setSessionMeta
   } = useWhiteboardStore();
 
   const [isEditingName, setIsEditingName] = useState(false);

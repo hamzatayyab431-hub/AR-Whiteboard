@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useWhiteboardStore } from './store/useWhiteboardStore';
 import Toolbar from './components/Toolbar';
 import Sidebar from './components/Sidebar';
@@ -7,13 +7,9 @@ import PerformanceOverlay from './components/PerformanceOverlay';
 import WebcamOverlay from './components/WebcamOverlay';
 import WhiteboardCanvas from './components/WhiteboardCanvas';
 import StatusBar from './components/StatusBar';
-import { Hand, Eye, Sparkles } from 'lucide-react';
+import { Hand, Sparkles } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Real-time hand pointer coordinates (normalized 0-1) and gesture
-  const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 });
-  const [gesture, setGesture] = useState('Idle');
-
   const {
     calibrationState,
     setBackendStatus,
@@ -70,16 +66,10 @@ export const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Callback from Webcam Hand Tracker
-  const handlePointerMove = (pos: { x: number; y: number }, activeGesture: string) => {
-    setPointerPos(pos);
-    setGesture(activeGesture);
-  };
-
   return (
     <div className="relative w-screen h-screen bg-darkBg text-gray-100 overflow-hidden font-sans select-none">
       {/* Background Whiteboard Canvas (Spans full viewport) */}
-      <WhiteboardCanvas pointerPos={pointerPos} gesture={gesture} />
+      <WhiteboardCanvas />
 
       {/* Main Top Header Toolbar */}
       <Toolbar />
@@ -94,7 +84,7 @@ export const App: React.FC = () => {
       <SettingsPanel />
 
       {/* Mirrored Webcam Box (overlaid over canvas) */}
-      <WebcamOverlay onPointerMove={handlePointerMove} />
+      <WebcamOverlay />
 
       {/* Bottom Status bar */}
       <StatusBar />
