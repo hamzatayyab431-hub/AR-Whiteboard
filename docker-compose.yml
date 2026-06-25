@@ -12,7 +12,7 @@ services:
       # Persist exported media session files
       - whiteboard_data:/app/data
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///ar_whiteboard.db
+      - DATABASE_URL=sqlite+aiosqlite:////app/ar_whiteboard.db
       - OCR_ENGINE=easyocr
     restart: unless-stopped
 

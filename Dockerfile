@@ -30,6 +30,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download and bake EasyOCR models into the container image
+RUN python -c "import easyocr; easyocr.Reader(['en'], gpu=False)"
+
 # Copy backend codebase
 COPY backend/ ./backend
 

@@ -154,7 +154,7 @@ export function detectAndFitShape(points: Point[]): {
     // We analyze the last 20% of points. If there is a sharp turnaround or angle change
     // we assume it is an arrow pointing in the direction of the stroke's end.
     let isArrow = false;
-    if (points.length >= 10) {
+    if (points.length >= 15 && maxDimension > 50) {
       const lastIdx = points.length - 1;
       const midIdx = Math.floor(points.length * 0.75);
       
@@ -174,9 +174,8 @@ export function detectAndFitShape(points: Point[]): {
         angleDiff = 2 * Math.PI - angleDiff;
       }
       
-      // If the tail curls back sharply (e.g. angle > 100 degrees / 1.7 rad),
-      // it means the user drew the arrowhead at the end in a single stroke.
-      if (angleDiff > 1.7 && angleDiff < 4.5) {
+      // If the tail curls back sharply to form an arrowhead (tight range 2.0 to 3.0 rad)
+      if (angleDiff > 2.0 && angleDiff < 3.0) {
         isArrow = true;
       }
     }

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from typing import List, Dict, Any, Optional
 from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Text, select, delete
@@ -14,8 +14,8 @@ class WhiteboardSession(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(100), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class CanvasObject(Base):
     __tablename__ = "canvas_objects"
@@ -102,7 +102,7 @@ async def save_session(session_id: str, name: str, objects: List[Dict[str, Any]]
             
             if s:
                 s.name = name
-                s.updated_at = datetime.utcnow()
+                s.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             else:
                 s = WhiteboardSession(id=session_id, name=name)
                 session.add(s)

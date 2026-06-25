@@ -57,7 +57,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -158,6 +158,8 @@ def process_ocr(payload: OCRRequest):
     try:
         # Convert base64 text image mask to OpenCV image
         cv2_img = base64_to_cv2(payload.image)
+        if cv2_img is None:
+            raise HTTPException(status_code=400, detail="Invalid image encoding or empty buffer")
         recognized_text = run_ocr(cv2_img)
         
         result = {
@@ -176,6 +178,8 @@ def process_ocr(payload: OCRRequest):
                 result["math"] = math_result
                 
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"OCR Request processing failed: {e}")
         raise HTTPException(status_code=400, detail=f"OCR execution failed: {str(e)}")

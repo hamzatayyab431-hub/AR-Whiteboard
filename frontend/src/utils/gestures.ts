@@ -36,6 +36,7 @@ export function classifyGesture(
 
   // Define key joints
   const wrist = l[0];
+  const thumbMCP = l[2];
   
   // Finger MCPs (Knuckles)
   const indexMCP = l[5];
@@ -71,8 +72,8 @@ export function classifyGesture(
   const isRingExtended = distance(ringMCP, ringTip, true) > distance(ringMCP, ringPIP, true) * 1.65;
   const isPinkyExtended = distance(pinkyMCP, pinkyTip, true) > distance(pinkyMCP, pinkyPIP, true) * 1.65;
   
-  // Thumb extension is calculated by its distance from the index finger MCP knuckle and wrist
-  const isThumbExtended = distance(thumbTip, indexMCP, true) > 100 * scaleRatio;
+  // Thumb extension is calculated by its distance from wrist relative to thumb MCP from wrist
+  const isThumbExtended = distance(thumbTip, wrist, true) > distance(thumbMCP, wrist, true) * 1.2;
 
   // 2. Calculate Distances between Tips for Pinches/OK gestures
   const thumbIndexDist = distance(thumbTip, indexTip, true);

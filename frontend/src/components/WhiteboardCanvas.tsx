@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
-import type { Point, CanvasObject, StrokeObject, ShapeObject, TextObject } from '../store/useWhiteboardStore';
+import type { Point, CanvasObject, StrokeObject, ShapeObject, TextObject, ToolType, ShapeType } from '../store/useWhiteboardStore';
 import { PointSmoother } from '../utils/smoothing';
 import { detectAndFitShape, getDistance } from '../utils/shapes';
 import { Maximize, ZoomIn, ZoomOut } from 'lucide-react';
@@ -42,6 +42,17 @@ export const WhiteboardCanvas: React.FC = () => {
   
   // Laser Pointer fading points
   const [laserPoints, setLaserPoints] = useState<{ p: Point; age: number }[]>([]);
+
+  // Window size state to force re-render on resize and resize canvas correctly
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Coordinate smoother instance
   const smootherRef = useRef(new PointSmoother(0.5, 0.04));
@@ -87,6 +98,23 @@ export const WhiteboardCanvas: React.FC = () => {
   const opacityRef = useRef(opacity);
   const selectedShapeTypeRef = useRef(selectedShapeType);
   const graceTimerRef = useRef<any | null>(null);
+  
+  // Extra refs to completely prevent stale closures in pointer/gesture effect
+  const objectsRef = useRef(objects);
+  const selectedObjectIdRef = useRef(selectedObjectId);
+  const isDraggingObjectRef = useRef(isDraggingObject);
+  const selectedOffsetRef = useRef(selectedOffset);
+  const textInputRef = useRef(textInput);
+
+  // Capture active stroke configurations to prevent races during the grace period
+  const pendingStrokeStateRef = useRef<{
+    points: Point[];
+    tool: ToolType;
+    color: string;
+    brushSize: number;
+    opacity: number;
+    selectedShapeType: ShapeType;
+  } | null>(null);
 
   useEffect(() => { activePointsRef.current = activePoints; }, [activePoints]);
   useEffect(() => { isDrawingRef.current = isDrawing; }, [isDrawing]);
@@ -95,6 +123,11 @@ export const WhiteboardCanvas: React.FC = () => {
   useEffect(() => { brushSizeRef.current = brushSize; }, [brushSize]);
   useEffect(() => { opacityRef.current = opacity; }, [opacity]);
   useEffect(() => { selectedShapeTypeRef.current = selectedShapeType; }, [selectedShapeType]);
+  useEffect(() => { objectsRef.current = objects; }, [objects]);
+  useEffect(() => { selectedObjectIdRef.current = selectedObjectId; }, [selectedObjectId]);
+  useEffect(() => { isDraggingObjectRef.current = isDraggingObject; }, [isDraggingObject]);
+  useEffect(() => { selectedOffsetRef.current = selectedOffset; }, [selectedOffset]);
+  useEffect(() => { textInputRef.current = textInput; }, [textInput]);
 
   // Sync PointSmoother parameters dynamically
   useEffect(() => {
@@ -110,33 +143,34 @@ export const WhiteboardCanvas: React.FC = () => {
     };
   }, []);
 
-  // Helper to finalize the current active stroke and persist it
-  const finalizeActiveStroke = () => {
-    if (!isDrawingRef.current) return;
-    setIsDrawing(false);
+  // Helper to finalize a previously captured pending stroke
+  const finalizePendingStroke = useCallback(() => {
+    const pending = pendingStrokeStateRef.current;
+    if (!pending) return;
     
-    const pts = activePointsRef.current;
+    setIsDrawing(false);
+    const pts = pending.points;
     if (pts.length > 2) {
       const boundingBox = detectAndFitShape(pts);
       const enableShapeSnapping = useWhiteboardStore.getState().featureFlags.ai_shapes;
       
-      if (toolRef.current === 'shape') {
+      if (pending.tool === 'shape') {
         const shapeObj: ShapeObject = {
           id: crypto.randomUUID(),
           type: 'shape',
           ...boundingBox,
-          shapeType: selectedShapeTypeRef.current,
-          color: colorRef.current,
-          strokeWidth: brushSizeRef.current
+          shapeType: pending.selectedShapeType,
+          color: pending.color,
+          strokeWidth: pending.brushSize
         };
         addObject(shapeObj);
-      } else if (toolRef.current === 'brush' && enableShapeSnapping && boundingBox.shapeType !== 'line') {
+      } else if (pending.tool === 'brush' && enableShapeSnapping && boundingBox.shapeType !== 'line') {
         const shapeObj: ShapeObject = {
           id: crypto.randomUUID(),
           type: 'shape',
           ...boundingBox,
-          color: colorRef.current,
-          strokeWidth: brushSizeRef.current
+          color: pending.color,
+          strokeWidth: pending.brushSize
         };
         addObject(shapeObj);
       } else {
@@ -144,15 +178,30 @@ export const WhiteboardCanvas: React.FC = () => {
           id: crypto.randomUUID(),
           type: 'stroke',
           points: pts,
-          color: colorRef.current,
-          width: brushSizeRef.current,
-          opacity: opacityRef.current
+          color: pending.color,
+          width: pending.brushSize,
+          opacity: pending.opacity
         };
         addObject(strokeObj);
       }
     }
     setActivePoints([]);
-  };
+    pendingStrokeStateRef.current = null;
+  }, [addObject]);
+
+  // Helper to finalize the current active stroke immediately and persist it
+  const finalizeActiveStroke = useCallback(() => {
+    if (!isDrawingRef.current) return;
+    pendingStrokeStateRef.current = {
+      points: [...activePointsRef.current],
+      tool: toolRef.current,
+      color: colorRef.current,
+      brushSize: brushSizeRef.current,
+      opacity: opacityRef.current,
+      selectedShapeType: selectedShapeTypeRef.current
+    };
+    finalizePendingStroke();
+  }, [finalizePendingStroke]);
 
   // 1. Core Render Loop
   useEffect(() => {
@@ -161,9 +210,13 @@ export const WhiteboardCanvas: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Handle resizing
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Handle resizing only if dimensions changed to prevent resetting canvas backing buffer
+    if (canvas.width !== windowSize.width) {
+      canvas.width = windowSize.width;
+    }
+    if (canvas.height !== windowSize.height) {
+      canvas.height = windowSize.height;
+    }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -204,7 +257,7 @@ export const WhiteboardCanvas: React.FC = () => {
     // Draw Hand Pointer Cursor Overlay
     drawPointerCursor(ctx);
 
-  }, [objects, pan, zoom, gridVisible, activePoints, isDrawing, pointerPos, laserPoints, color, brushSize, opacity]);
+  }, [objects, pan, zoom, gridVisible, activePoints, isDrawing, pointerPos, laserPoints, color, brushSize, opacity, windowSize]);
 
   // Renders the dot grid background
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
@@ -369,7 +422,7 @@ export const WhiteboardCanvas: React.FC = () => {
   // 2. Gesture Drawing Logic (runs whenever hand pointer position changes)
   useEffect(() => {
     if (pointerPos.x === 0 && pointerPos.y === 0) {
-      if (isDrawing && !graceTimerRef.current) {
+      if (isDrawingRef.current && !graceTimerRef.current) {
         graceTimerRef.current = setTimeout(() => {
           finalizeActiveStroke();
           graceTimerRef.current = null;
@@ -387,14 +440,14 @@ export const WhiteboardCanvas: React.FC = () => {
         graceTimerRef.current = null;
       }
 
-      if (!isDrawing) {
+      if (!isDrawingRef.current) {
         smootherRef.current.reset();
         const smoothed = smootherRef.current.smooth(canvasPt.x, canvasPt.y);
         setIsDrawing(true);
         setActivePoints([smoothed]);
       } else {
         const smoothed = smootherRef.current.smooth(canvasPt.x, canvasPt.y);
-        const lastPt = activePoints[activePoints.length - 1];
+        const lastPt = activePointsRef.current[activePointsRef.current.length - 1];
         if (lastPt && getDistance(lastPt, smoothed) > 150) {
           // Hand tracking resumed far away; finalize the previous stroke and start a new one
           finalizeActiveStroke();
@@ -407,7 +460,7 @@ export const WhiteboardCanvas: React.FC = () => {
     } 
     
     // Draw gesture ended (finger lifted) - wait for grace period
-    else if (isDrawing && gesture !== 'Draw') {
+    else if (isDrawingRef.current && gesture !== 'Draw') {
       if (!graceTimerRef.current) {
         graceTimerRef.current = setTimeout(() => {
           finalizeActiveStroke();
@@ -417,7 +470,7 @@ export const WhiteboardCanvas: React.FC = () => {
     }
 
     // B. Handle Eraser Gesture
-    if (gesture === 'Eraser' || tool === 'eraser') {
+    if (gesture === 'Eraser' || toolRef.current === 'eraser') {
       // Find objects near coordinates and delete them
       const eraseRadius = 30; // pixels
       const hitObj = findObjectAt(canvasPt.x, canvasPt.y, eraseRadius);
@@ -427,13 +480,13 @@ export const WhiteboardCanvas: React.FC = () => {
     }
 
     // C. Handle Laser Pointer
-    if (gesture === 'Idle' && tool === 'laser') {
+    if (gesture === 'Idle' && toolRef.current === 'laser') {
       setLaserPoints(prev => [...prev, { p: pointerPos, age: 0 }]);
     }
 
     // D. Selection Moving Mode
-    if (tool === 'select' && gesture === 'Pinch') {
-      if (!isDraggingObject) {
+    if (toolRef.current === 'select' && gesture === 'Pinch') {
+      if (!isDraggingObjectRef.current) {
         const hit = findObjectAt(canvasPt.x, canvasPt.y, 25);
         if (hit) {
           useWhiteboardStore.setState({ selectedObjectId: hit.id });
@@ -443,37 +496,36 @@ export const WhiteboardCanvas: React.FC = () => {
           const objY = hit.type === 'stroke' ? hit.points[0].y : hit.y;
           setSelectedOffset({ x: canvasPt.x - objX, y: canvasPt.y - objY });
         }
-      } else if (selectedObjectId) {
-        const obj = objects.find(o => o.id === selectedObjectId);
+      } else if (selectedObjectIdRef.current) {
+        const obj = objectsRef.current.find(o => o.id === selectedObjectIdRef.current);
         if (obj) {
           if (obj.type === 'stroke') {
             const firstPt = obj.points[0];
-            const dx = canvasPt.x - selectedOffset.x - firstPt.x;
-            const dy = canvasPt.y - selectedOffset.y - firstPt.y;
+            const dx = canvasPt.x - selectedOffsetRef.current.x - firstPt.x;
+            const dy = canvasPt.y - selectedOffsetRef.current.y - firstPt.y;
             const updatedPoints = obj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-            updateObject(selectedObjectId, { points: updatedPoints });
+            updateObject(selectedObjectIdRef.current, { points: updatedPoints });
           } else {
-            updateObject(selectedObjectId, {
-              x: canvasPt.x - selectedOffset.x,
-              y: canvasPt.y - selectedOffset.y
+            updateObject(selectedObjectIdRef.current, {
+              x: canvasPt.x - selectedOffsetRef.current.x,
+              y: canvasPt.y - selectedOffsetRef.current.y
             });
           }
         }
       }
-    } else if (isDraggingObject && gesture !== 'Pinch') {
+    } else if (isDraggingObjectRef.current && gesture !== 'Pinch') {
       setIsDraggingObject(false);
     }
 
     // Text Tool Trigger
-    if (tool === 'text' && gesture === 'Pinch' && !textInput) {
+    if (toolRef.current === 'text' && gesture === 'Pinch' && !textInputRef.current) {
       setTextInput({
         x: canvasPt.x,
         y: canvasPt.y,
         val: ''
       });
     }
-
-  }, [pointerPos, gesture]);
+  }, [pointerPos, gesture, finalizePendingStroke, finalizeActiveStroke]);
 
   // Laser Pointer decay tick
   useEffect(() => {
@@ -489,9 +541,10 @@ export const WhiteboardCanvas: React.FC = () => {
 
   // Helper: Find object closest to coords
   const findObjectAt = (x: number, y: number, radius: number): CanvasObject | null => {
+    const objs = objectsRef.current;
     // Traverse in reverse to hit the top layer first
-    for (let i = objects.length - 1; i >= 0; i--) {
-      const obj = objects[i];
+    for (let i = objs.length - 1; i >= 0; i--) {
+      const obj = objs[i];
       if (obj.type === 'stroke') {
         // Check if any point is within radius
         const hit = obj.points.some(p => getDistance(p, { x, y }) < radius + obj.width / 2);

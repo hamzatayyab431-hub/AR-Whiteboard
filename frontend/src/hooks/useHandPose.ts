@@ -72,7 +72,6 @@ export const useHandPose = () => {
   };
 
   return {
-    handLandmarker: landmarkerRef.current,
     isLoading,
     error,
     detectHands,

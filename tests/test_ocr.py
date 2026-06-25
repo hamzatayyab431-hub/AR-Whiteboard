@@ -5,7 +5,7 @@ def test_arithmetic_solving():
     # Test simple addition
     res = parse_and_solve_math("2 + 2")
     assert res["success"] is True
-    assert res["result"] == "4.00000000000000" or res["result"] == "4"
+    assert float(res["result"]) == 4.0
     assert "4" in res["latex"]
 
     # Test multiplication & operator precedence

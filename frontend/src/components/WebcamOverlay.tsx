@@ -10,6 +10,7 @@ export const WebcamOverlay: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameId = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [camError, setCamError] = useState<string | null>(null);
 
@@ -26,7 +27,8 @@ export const WebcamOverlay: React.FC = () => {
     setPerformanceMetrics,
     undo,
     redo,
-    clearCanvas
+    clearCanvas,
+    gestureFps
   } = useWhiteboardStore();
 
   const { isLoading: modelLoading, error: modelError, detectHands } = useHandPose();
@@ -39,8 +41,9 @@ export const WebcamOverlay: React.FC = () => {
   // Setup Webcam Stream
   useEffect(() => {
     if (!showCamera) {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
         setStream(null);
       }
       return;
@@ -57,6 +60,7 @@ export const WebcamOverlay: React.FC = () => {
           },
           audio: false
         });
+        streamRef.current = mediaStream;
         setStream(mediaStream);
         if (videoRef.current) {
           videoRef.current.srcObject = mediaStream;
@@ -70,8 +74,9 @@ export const WebcamOverlay: React.FC = () => {
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     };
   }, [showCamera]);
@@ -361,7 +366,7 @@ export const WebcamOverlay: React.FC = () => {
         </div>
         <div className="text-right">
           <span className="text-gray-500 font-bold uppercase block">FPS</span>
-          <span className="text-green-400 font-semibold">30+ FPS</span>
+          <span className="text-green-400 font-semibold">{gestureFps} FPS</span>
         </div>
       </div>
     </div>

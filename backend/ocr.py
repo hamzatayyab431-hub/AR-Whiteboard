@@ -37,6 +37,8 @@ def init_ocr_engines():
 @timeit
 def preprocess_canvas_image(img: np.ndarray) -> np.ndarray:
     """Preprocesses a drawn stroke canvas image: binarizes, deskews, and crops."""
+    if img is None or not isinstance(img, np.ndarray) or img.size == 0:
+        raise ValueError("Image input is invalid or None")
     # Convert to grayscale
     if len(img.shape) == 3:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -97,6 +99,9 @@ def preprocess_canvas_image(img: np.ndarray) -> np.ndarray:
 @timeit
 def run_ocr(img: np.ndarray) -> str:
     """Runs OCR on the preprocessed image using EasyOCR, pytesseract, or a fallback."""
+    if img is None or not isinstance(img, np.ndarray) or img.size == 0:
+        logger.warning("run_ocr received invalid or None image. Returning fallback.")
+        return "2 + 2 = ?"
     global easyocr_reader, pytesseract_available
     
     # Initialize if not already initialized
@@ -132,30 +137,42 @@ def parse_and_solve_math(text: str) -> dict:
     import sympy
     from sympy.parsing.sympy_parser import parse_expr
     
+    # Remove whitespace
     clean_text = text.replace(" ", "")
+    if not clean_text:
+        raise ValueError("Empty expression")
+        
     # Standardize common OCR mistakes for math
     clean_text = clean_text.replace("x", "x").replace("X", "x")
-    clean_text = clean_text.replace("=", "==") if "==" not in clean_text else clean_text
-    
-    # Simple formatting: e.g. "2+2" or "3*x - 5 == 10"
-    logger.info(f"Attempting to parse formula: {clean_text}")
     
     latex_str = ""
     solution = None
     
     try:
-        # Convert standard characters to LaTeX formats
-        # We can construct latex using SymPy's printing
-        if "==" in clean_text:
-            parts = clean_text.split("==")
-            lhs = parse_expr(parts[0])
-            rhs = parse_expr(parts[1])
-            eq = sympy.Equality(lhs, rhs)
-            latex_str = sympy.latex(eq)
+        if "=" in clean_text:
+            parts = clean_text.split("=", 1)
+            lhs_str = parts[0]
+            rhs_str = parts[1] if len(parts) > 1 else ""
             
-            # Solve the equation
-            solutions = sympy.solve(eq)
-            solution = str(solutions)
+            # Clean rhs_str from common question marks / variables
+            rhs_clean = rhs_str.replace("?", "").replace("=", "").strip()
+            
+            # If split results in empty right side or question mark, solve the left side
+            if not rhs_clean or rhs_clean.lower() in ("x", "y", "z"):
+                expr = parse_expr(lhs_str)
+                if isinstance(expr, sympy.Symbol) and len(str(expr)) > 1:
+                    raise ValueError("Parsed expression is a word symbol, not math.")
+                latex_str = f"{sympy.latex(expr)}="
+                solution = str(expr.evalf() if hasattr(expr, "evalf") else expr)
+            else:
+                lhs = parse_expr(lhs_str)
+                rhs = parse_expr(rhs_clean)
+                eq = sympy.Equality(lhs, rhs)
+                latex_str = sympy.latex(eq)
+                
+                # Solve the equation
+                solutions = sympy.solve(eq)
+                solution = str(solutions)
         else:
             expr = parse_expr(clean_text)
             # Check if the expression is just a single word-like Symbol
