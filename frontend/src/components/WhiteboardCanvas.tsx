@@ -54,8 +54,8 @@ export const WhiteboardCanvas: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Coordinate smoother instance
-  const smootherRef = useRef(new PointSmoother(0.5, 0.04));
+  // Coordinate smoother instance tuned for screen-pixel scale inputs
+  const smootherRef = useRef(new PointSmoother(0.8, 0.03));
 
   // Handle pointer transformations (convert 0-1 hand coordinates to screen pixels)
   const getScreenCoords = (normPos: Point) => {
@@ -430,8 +430,15 @@ export const WhiteboardCanvas: React.FC = () => {
       }
       return;
     }
+    
+    // Map pointerPos directly into screen space pixels first
     const scr = getScreenCoords(pointerPos);
-    const canvasPt = screenToCanvas(scr.x, scr.y);
+    
+    // Feed raw screen pixels directly into our PointSmoother instance
+    const smoothedScreen = smootherRef.current.smooth(scr.x, scr.y);
+    
+    // Take resulting smoothed screen coordinate, and ONLY THEN convert it into virtual canvas space
+    const canvasPt = screenToCanvas(smoothedScreen.x, smoothedScreen.y);
 
     // A. Handle Drawing Mode
     if (gesture === 'Draw') {
@@ -441,20 +448,25 @@ export const WhiteboardCanvas: React.FC = () => {
       }
 
       if (!isDrawingRef.current) {
+        // Reset the smoother when starting a new stroke and re-smooth this first point in screen space
         smootherRef.current.reset();
-        const smoothed = smootherRef.current.smooth(canvasPt.x, canvasPt.y);
+        const initialSmoothedScreen = smootherRef.current.smooth(scr.x, scr.y);
+        const initialCanvasPt = screenToCanvas(initialSmoothedScreen.x, initialSmoothedScreen.y);
         setIsDrawing(true);
-        setActivePoints([smoothed]);
+        setActivePoints([initialCanvasPt]);
       } else {
-        const smoothed = smootherRef.current.smooth(canvasPt.x, canvasPt.y);
         const lastPt = activePointsRef.current[activePointsRef.current.length - 1];
-        if (lastPt && getDistance(lastPt, smoothed) > 150) {
+        // Scale threshold dynamically as (150 / zoom) to ensure physical consistency in screen pixels
+        if (lastPt && getDistance(lastPt, canvasPt) > (150 / zoom)) {
           // Hand tracking resumed far away; finalize the previous stroke and start a new one
           finalizeActiveStroke();
+          smootherRef.current.reset();
+          const initialSmoothedScreen = smootherRef.current.smooth(scr.x, scr.y);
+          const initialCanvasPt = screenToCanvas(initialSmoothedScreen.x, initialSmoothedScreen.y);
           setIsDrawing(true);
-          setActivePoints([smoothed]);
+          setActivePoints([initialCanvasPt]);
         } else {
-          setActivePoints(prev => [...prev, smoothed]);
+          setActivePoints(prev => [...prev, canvasPt]);
         }
       }
     } 

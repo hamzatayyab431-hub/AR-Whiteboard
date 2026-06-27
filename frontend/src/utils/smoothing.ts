@@ -67,7 +67,7 @@ export class PointSmoother {
   private filterX: OneEuroFilter;
   private filterY: OneEuroFilter;
 
-  constructor(minCutoff = 0.5, beta = 0.05) {
+  constructor(minCutoff = 0.8, beta = 0.03) {
     this.filterX = new OneEuroFilter(minCutoff, beta);
     this.filterY = new OneEuroFilter(minCutoff, beta);
   }

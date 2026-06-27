@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
 import { useHandPose } from '../hooks/useHandPose';
-import { classifyGesture, distance, getGestureDetails } from '../utils/gestures';
+import { classifyGesture, distance, getGestureDetails, GestureStabilizer } from '../utils/gestures';
 import type { Landmark } from '../utils/gestures';
 import { Camera, CameraOff, Sparkles, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -13,6 +13,9 @@ export const WebcamOverlay: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [camError, setCamError] = useState<string | null>(null);
+  
+  // Temporal gesture stabilizer instance
+  const stabilizerRef = useRef(new GestureStabilizer(5));
 
   const {
     gesture,
@@ -126,7 +129,9 @@ export const WebcamOverlay: React.FC = () => {
 
         // 2. Classify gesture
         const classification = classifyGesture(handLandmarks, calibrationData);
-        setGesture(classification.gesture, classification.confidence);
+        // Stabilize the raw gesture using the temporal stabilizer
+        const stabilizedGesture = stabilizerRef.current.addFrame(classification.gesture);
+        setGesture(stabilizedGesture, classification.confidence);
 
         // 3. Process pointer position (Index finger tip is landmark 8)
         const indexTip = handLandmarks[8];
@@ -134,12 +139,19 @@ export const WebcamOverlay: React.FC = () => {
         const pointerX = (1 - indexTip.x);
         const pointerY = indexTip.y;
         
-        setPointerPos({ x: pointerX, y: pointerY });
+        if (pointerX === 0 && pointerY === 0) {
+          stabilizerRef.current.reset();
+          setPointerPos({ x: 0, y: 0 });
+        } else {
+          setPointerPos({ x: pointerX, y: pointerY });
+        }
 
         // 4. Handle state machine (Calibration & Debounced Actions)
-        handleStateEvents(classification.gesture, handLandmarks);
+        handleStateEvents(stabilizedGesture, handLandmarks);
       } else {
+        stabilizerRef.current.reset();
         setGesture('Idle', 0);
+        setPointerPos({ x: 0, y: 0 });
       }
 
       animationFrameId.current = requestAnimationFrame(processFrame);

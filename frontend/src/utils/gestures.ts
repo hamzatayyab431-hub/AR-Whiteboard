@@ -66,14 +66,14 @@ export function classifyGesture(
   const calibratedPinchThreshold = calibration.pinchThreshold * scaleRatio;
 
   // A finger is extended if the distance from knuckles to tip is significantly
-  // larger than the distance from knuckles to joint PIP.
-  const isIndexExtended = distance(indexMCP, indexTip, true) > distance(indexMCP, indexPIP, true) * 1.65;
-  const isMiddleExtended = distance(middleMCP, middleTip, true) > distance(middleMCP, middlePIP, true) * 1.65;
-  const isRingExtended = distance(ringMCP, ringTip, true) > distance(ringMCP, ringPIP, true) * 1.65;
-  const isPinkyExtended = distance(pinkyMCP, pinkyTip, true) > distance(pinkyMCP, pinkyPIP, true) * 1.65;
+  // larger than the distance from knuckles to joint PIP. Lowered threshold from 1.65 to 1.35 to tolerate perspective foreshortening.
+  const isIndexExtended = distance(indexMCP, indexTip, true) > distance(indexMCP, indexPIP, true) * 1.35;
+  const isMiddleExtended = distance(middleMCP, middleTip, true) > distance(middleMCP, middlePIP, true) * 1.35;
+  const isRingExtended = distance(ringMCP, ringTip, true) > distance(ringMCP, ringPIP, true) * 1.35;
+  const isPinkyExtended = distance(pinkyMCP, pinkyTip, true) > distance(pinkyMCP, pinkyPIP, true) * 1.35;
   
-  // Thumb extension is calculated by its distance from wrist relative to thumb MCP from wrist
-  const isThumbExtended = distance(thumbTip, wrist, true) > distance(thumbMCP, wrist, true) * 1.2;
+  // Thumb extension is calculated by its distance from wrist relative to thumb MCP from wrist. Lowered threshold from 1.2 to 1.1.
+  const isThumbExtended = distance(thumbTip, wrist, true) > distance(thumbMCP, wrist, true) * 1.1;
 
   // 2. Calculate Distances between Tips for Pinches/OK gestures
   const thumbIndexDist = distance(thumbTip, indexTip, true);
@@ -127,8 +127,9 @@ export function classifyGesture(
   }
 
   // H. Draw (Index extended, middle, ring, pinky curled)
-  // We allow thumb to be in any state, but middle, ring, and pinky must be curled.
-  if (isIndexExtended && !isMiddleExtended && !isRingExtended && !isPinkyExtended) {
+  // We keep validation strict for index extended and middle/ring contracted,
+  // but eliminate pinky check and thumb check to prevent accidental dropouts.
+  if (isIndexExtended && !isMiddleExtended && !isRingExtended) {
     return { gesture: 'Draw', confidence: 0.95 };
   }
 
@@ -159,5 +160,46 @@ export function getGestureDetails(gesture: string): { name: string; emoji: strin
       return { name: 'Pinch / Select', emoji: '🤏', desc: 'Pinch thumb + index to resize brush or select tools' };
     default:
       return { name: 'Idle', emoji: '💤', desc: 'Hand idle. Curl index finger to pause drawing' };
+  }
+}
+
+/**
+ * Temporal Gesture Stabilizer to prevent flickering state changes
+ * by using a rolling sliding window majority consensus algorithm.
+ */
+export class GestureStabilizer {
+  private history: string[] = [];
+  private windowSize: number;
+
+  constructor(windowSize = 5) {
+    this.windowSize = windowSize;
+  }
+
+  public addFrame(rawGesture: string): string {
+    this.history.push(rawGesture);
+    if (this.history.length > this.windowSize) {
+      this.history.shift();
+    }
+    return this.getConsensus();
+  }
+
+  private getConsensus(): string {
+    if (this.history.length === 0) return 'Idle';
+    const counts: Record<string, number> = {};
+    let maxCount = 0;
+    let consensus = 'Idle';
+
+    for (const gesture of this.history) {
+      counts[gesture] = (counts[gesture] || 0) + 1;
+      if (counts[gesture] > maxCount) {
+        maxCount = counts[gesture];
+        consensus = gesture;
+      }
+    }
+    return consensus;
+  }
+
+  public reset(): void {
+    this.history = [];
   }
 }
