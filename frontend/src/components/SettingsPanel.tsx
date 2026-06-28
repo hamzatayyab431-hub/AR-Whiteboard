@@ -61,7 +61,7 @@ export const SettingsPanel: React.FC = () => {
   };
 
   return (
-    <div className="absolute top-20 right-4 z-50 glass-panel w-72 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 text-sm max-h-[85vh] overflow-y-auto">
+    <div className="absolute top-20 left-4 z-50 glass-panel w-72 rounded-2xl p-4 shadow-2xl flex flex-col gap-4 text-sm max-h-[85vh] overflow-y-auto">
       {/* Title */}
       <div className="flex items-center gap-2 border-b border-darkBorder pb-2.5">
         <Settings size={18} className="text-blue-500" />

@@ -21,7 +21,7 @@ export const PerformanceOverlay: React.FC = () => {
   };
 
   return (
-    <div className="absolute top-20 left-4 z-50 glass-panel p-4 rounded-xl text-xs font-mono w-64 shadow-2xl transition-all duration-300">
+    <div className="absolute top-20 left-80 z-50 glass-panel p-4 rounded-xl text-xs font-mono w-64 shadow-2xl transition-all duration-300">
       <div className="flex items-center justify-between border-b border-darkBorder pb-2 mb-2">
         <span className="text-gray-400 font-bold heading-font flex items-center gap-1.5">
           <Activity size={14} className="text-blue-500" /> SYSTEM DIAGNOSTICS

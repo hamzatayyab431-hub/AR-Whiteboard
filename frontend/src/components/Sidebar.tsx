@@ -66,7 +66,7 @@ export const Sidebar: React.FC = () => {
   const shapesList: ShapeType[] = ['rect', 'circle', 'triangle', 'arrow', 'line'];
 
   return (
-    <div className="absolute top-24 left-4 bottom-24 z-50 flex flex-col gap-4 pointer-events-none">
+    <div className="absolute top-24 right-4 bottom-24 z-50 flex flex-col gap-4 pointer-events-none">
       {/* Tools Sidebar Panel */}
       <div className="glass-panel p-2.5 rounded-2xl flex flex-col gap-1.5 shadow-2xl pointer-events-auto">
         {toolsList.map((t) => {
@@ -90,7 +90,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Submenu for Shapes (Renders only when shape tool is active) */}
       {tool === 'shape' && (
-        <div className="glass-panel p-2 rounded-2xl flex flex-col gap-1.5 shadow-xl animate-in slide-in-from-left duration-200 pointer-events-auto">
+        <div className="glass-panel p-2 rounded-2xl flex flex-col gap-1.5 shadow-xl animate-in slide-in-from-right duration-200 pointer-events-auto">
           <div className="text-[10px] text-gray-500 font-bold px-1.5 pb-1 uppercase border-b border-darkBorder mb-1">
             Shapes
           </div>

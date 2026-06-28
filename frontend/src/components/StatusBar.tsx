@@ -33,7 +33,7 @@ export const StatusBar: React.FC = () => {
   };
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 z-40 glass-panel px-4 py-2 rounded-xl flex items-center justify-between text-[11px] text-gray-400 font-medium shadow-xl border border-white/5">
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 glass-panel px-4 py-2 rounded-xl flex items-center justify-between text-[11px] text-gray-400 font-medium shadow-xl border border-white/5 w-auto max-w-[90vw] whitespace-nowrap gap-6">
       {/* Active tool guide */}
       <div className="flex items-center gap-2">
         <Compass size={14} className="text-blue-500 animate-spin duration-1000" style={{ animationDuration: '8s' }} />
