@@ -55,7 +55,7 @@ export const WhiteboardCanvas: React.FC = () => {
   }, []);
 
   // Coordinate smoother instance tuned for screen-pixel scale inputs
-  const smootherRef = useRef(new PointSmoother(0.8, 0.03));
+  const smootherRef = useRef(new PointSmoother(1.5, 0.05));
 
   // Handle pointer transformations (convert 0-1 hand coordinates to screen pixels)
   const getScreenCoords = (normPos: Point) => {

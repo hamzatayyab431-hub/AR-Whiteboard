@@ -14,8 +14,8 @@ export const WebcamOverlay: React.FC = () => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [camError, setCamError] = useState<string | null>(null);
   
-  // Temporal gesture stabilizer instance
-  const stabilizerRef = useRef(new GestureStabilizer(5));
+  // Temporal gesture stabilizer instance with a smaller window size (3) for faster responses
+  const stabilizerRef = useRef(new GestureStabilizer(3));
 
   const {
     gesture,
