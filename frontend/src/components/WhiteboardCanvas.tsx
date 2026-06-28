@@ -737,7 +737,7 @@ export const WhiteboardCanvas: React.FC = () => {
       />
 
       {/* Floating Canvas Controls (Zoom/Pan shortcuts) */}
-      <div className="absolute bottom-4 right-4 z-40 flex items-center gap-1.5 glass-panel p-1.5 rounded-xl shadow-lg">
+      <div className="absolute bottom-4 right-72 z-40 flex items-center gap-1.5 glass-panel p-1.5 rounded-xl shadow-lg">
         <button 
           onClick={() => setZoom(z => z * 1.2)}
           className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/5 transition-all hover-scale"

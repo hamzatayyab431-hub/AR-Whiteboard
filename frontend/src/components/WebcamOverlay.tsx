@@ -320,7 +320,7 @@ export const WebcamOverlay: React.FC = () => {
   if (!showCamera) return null;
 
   return (
-    <div className="absolute bottom-4 left-4 z-40 glass-panel rounded-2xl overflow-hidden w-64 shadow-2xl border border-white/10 flex flex-col group">
+    <div className="absolute bottom-4 right-4 z-40 glass-panel rounded-2xl overflow-hidden w-64 shadow-2xl border border-white/10 flex flex-col group">
       {/* Video stream viewport */}
       <div className="relative aspect-video w-full bg-black/45 overflow-hidden">
         {/* Mirror Webcam feed */}
