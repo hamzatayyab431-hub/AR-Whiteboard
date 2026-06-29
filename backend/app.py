@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from loguru import logger
 
@@ -169,8 +170,8 @@ def process_ocr(payload: OCRRequest):
         
         # If math solver is enabled and string looks like math, solve it
         if settings.MATH_SOLVER_ENABLED and recognized_text:
-            # Look for arithmetic characters (+, -, *, /, =, or variables)
-            math_chars = set("0123456789+-*/=xyz^(). ")
+            # Look for arithmetic characters (+, -, *, /, =, or variables) including common OCR unicode symbols
+            math_chars = set("0123456789+-*/=xyz^(). ×÷²³XY")
             is_likely_math = len(recognized_text) > 0 and all(c in math_chars for c in recognized_text)
             
             if is_likely_math:
@@ -226,7 +227,6 @@ def export_canvas(payload: ExportRequest):
         raise HTTPException(status_code=500, detail=f"Export generation failed: {str(e)}")
 
 # Mount production frontend static files if directory exists
-from fastapi.staticfiles import StaticFiles
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 if os.path.exists(frontend_dist):
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

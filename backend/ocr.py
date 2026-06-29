@@ -1,4 +1,3 @@
-import re
 import cv2
 import numpy as np
 from loguru import logger
@@ -142,8 +141,8 @@ def parse_and_solve_math(text: str) -> dict:
     if not clean_text:
         raise ValueError("Empty expression")
         
-    # Standardize common OCR mistakes for math
-    clean_text = clean_text.replace("x", "x").replace("X", "x")
+    # Standardize common OCR artifacts for math expressions
+    clean_text = clean_text.replace("X", "x").replace("×", "*").replace("÷", "/").replace("²", "**2").replace("³", "**3")
     
     latex_str = ""
     solution = None

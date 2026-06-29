@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
     # Server Settings
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -27,10 +29,6 @@ class Settings(BaseSettings):
     DEFAULT_RESOLUTION_WIDTH: int = 1280
     DEFAULT_RESOLUTION_HEIGHT: int = 720
     FPS_LIMIT: int = 30
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 # Ensure data directory exists
 settings = Settings()

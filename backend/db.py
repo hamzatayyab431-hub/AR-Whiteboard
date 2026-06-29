@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 import uuid
 from typing import List, Dict, Any, Optional
-from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Text, select, delete
+from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Text, Index, select, delete
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from backend.config import settings
@@ -25,6 +25,10 @@ class CanvasObject(Base):
     type = Column(String(20), nullable=False)  # 'stroke', 'shape', 'text'
     data = Column(Text, nullable=False)        # JSON string containing coordinates, color, size, text etc.
     layer = Column(Integer, default=0)
+    
+    __table_args__ = (
+        Index("ix_canvas_objects_session_id_layer", "session_id", "layer"),
+    )
 
 # Create engine and sessionmaker
 engine = create_async_engine(settings.DATABASE_URL, echo=False)

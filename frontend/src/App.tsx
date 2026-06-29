@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useWhiteboardStore } from './store/useWhiteboardStore';
 import Toolbar from './components/Toolbar';
 import Sidebar from './components/Sidebar';
@@ -8,6 +8,9 @@ import WebcamOverlay from './components/WebcamOverlay';
 import WhiteboardCanvas from './components/WhiteboardCanvas';
 import StatusBar from './components/StatusBar';
 import { Hand, Sparkles } from 'lucide-react';
+
+// Centralised backend URL — change once here to switch environments
+const API_BASE_URL = 'http://localhost:8000';
 
 export const App: React.FC = () => {
   const {
@@ -39,32 +42,32 @@ export const App: React.FC = () => {
   }, []);
 
   // 2. Poll Backend API for System Health & Feature Flags
-  useEffect(() => {
-    const checkBackend = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/status');
-        if (response.ok) {
-          const data = await response.json();
-          setBackendStatus('online', data.cpu_usage_percent, data.memory_usage_percent);
-          
-          if (data.features) {
-            setFeatureFlags({
-              ai_shapes: data.features.ai_shapes,
-              equation_solver: data.features.equation_solver
-            });
-          }
-        } else {
-          setBackendStatus('offline');
+  const checkBackend = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setBackendStatus('online', data.cpu_usage_percent, data.memory_usage_percent);
+        
+        if (data.features) {
+          setFeatureFlags({
+            ai_shapes: data.features.ai_shapes,
+            equation_solver: data.features.equation_solver
+          });
         }
-      } catch (err) {
+      } else {
         setBackendStatus('offline');
       }
-    };
+    } catch (err) {
+      setBackendStatus('offline');
+    }
+  }, [setBackendStatus, setFeatureFlags]);
 
+  useEffect(() => {
     checkBackend();
     const interval = setInterval(checkBackend, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [checkBackend]);
 
   return (
     <div className="relative w-screen h-screen bg-darkBg text-gray-100 overflow-hidden font-sans select-none">

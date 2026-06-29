@@ -1,5 +1,6 @@
 import json
 import io
+import math
 from typing import List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont
 from loguru import logger
@@ -158,7 +159,6 @@ def render_to_pil(objects: List[Dict[str, Any]], width: int = 1920, height: int 
                 # Main line
                 draw.line([(x1, y1), (x2, y2)], fill=color, width=stroke_width)
                 # Arrowhead simple calculation
-                import math
                 angle = math.atan2(y2 - y1, x2 - x1)
                 arrow_len = 15
                 arrow_angle = math.pi / 6 # 30 degrees
@@ -177,10 +177,11 @@ def render_to_pil(objects: List[Dict[str, Any]], width: int = 1920, height: int 
             font_size = int(obj.get("fontSize", 20))
             
             try:
-                # Use default system fonts
+                # Attempt to load a scalable default font at the requested size
+                font = ImageFont.load_default(size=font_size)
+            except (TypeError, Exception):
+                # Older Pillow versions don't support size param; fall back
                 font = ImageFont.load_default()
-            except Exception:
-                font = None
                 
             draw.text((x, y), content, fill=color, font=font)
 

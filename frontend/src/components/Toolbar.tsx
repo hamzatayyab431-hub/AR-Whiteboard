@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+const API_BASE_URL = 'http://localhost:8000';
+
 export const Toolbar: React.FC = () => {
   const {
     objects,
@@ -55,7 +57,7 @@ export const Toolbar: React.FC = () => {
 
     try {
       const startTime = performance.now();
-      const response = await fetch('http://localhost:8000/save', {
+      const response = await fetch(`${API_BASE_URL}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,14 +85,31 @@ export const Toolbar: React.FC = () => {
     }
   };
 
-  // Listen to gesture save triggers
+  // Listen to gesture save triggers - use store.getState() to avoid stale closures
   React.useEffect(() => {
     const handleGestureSave = () => {
-      handleSaveSession();
+      // Always read latest state to avoid stale closure
+      const store = useWhiteboardStore.getState();
+      const sessId = store.activeSessionId || crypto.randomUUID();
+      const name = store.activeSessionName || 'Untitled Session';
+      store.setSessionMeta(sessId, name);
+
+      fetch(`${API_BASE_URL}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessId, name, objects: store.objects })
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.status === 'success') {
+            confetti({ particleCount: 100, spread: 60, origin: { y: 0.1, x: 0.5 } });
+          }
+        })
+        .catch((err) => console.error('Gesture save failed:', err));
     };
     window.addEventListener('trigger-session-save', handleGestureSave);
     return () => window.removeEventListener('trigger-session-save', handleGestureSave);
-  }, [objects, activeSessionId, activeSessionName]);
+  }, []);
 
   // 2. Trigger Canvas OCR & Math Solver
   const handleTriggerOCR = async () => {
@@ -105,7 +124,7 @@ export const Toolbar: React.FC = () => {
       const imgBase64 = canvas.toDataURL('image/png');
       const startTime = performance.now();
       
-      const response = await fetch('http://localhost:8000/ocr', {
+      const response = await fetch(`${API_BASE_URL}/ocr`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imgBase64 })
@@ -131,7 +150,7 @@ export const Toolbar: React.FC = () => {
   const handleExport = async (format: 'png' | 'jpeg' | 'svg' | 'pdf') => {
     setExportOpen(false);
     try {
-      const response = await fetch('http://localhost:8000/export', {
+      const response = await fetch(`${API_BASE_URL}/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

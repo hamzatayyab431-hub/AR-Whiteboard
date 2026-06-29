@@ -159,6 +159,9 @@ const defaultState = {
   featureFlags: { ai_shapes: true, equation_solver: true },
 };
 
+// Cap undo/redo history to prevent unbounded memory growth during long sessions
+const MAX_HISTORY_SIZE = 50;
+
 export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   ...defaultState,
   
@@ -166,8 +169,10 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   
   addObject: (object) => {
     const { objects, undoStack } = get();
+    const newUndoStack = [...undoStack, objects];
+    if (newUndoStack.length > MAX_HISTORY_SIZE) newUndoStack.shift();
     set({
-      undoStack: [...undoStack, objects],
+      undoStack: newUndoStack,
       redoStack: [],
       objects: [...objects, object]
     });
@@ -182,8 +187,10 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
       }
       return obj;
     });
+    const newUndoStack = [...undoStack, objects];
+    if (newUndoStack.length > MAX_HISTORY_SIZE) newUndoStack.shift();
     set({
-      undoStack: [...undoStack, objects],
+      undoStack: newUndoStack,
       redoStack: [],
       objects: updatedObjects
     });
@@ -191,8 +198,10 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   
   deleteObject: (id) => {
     const { objects, undoStack } = get();
+    const newUndoStack = [...undoStack, objects];
+    if (newUndoStack.length > MAX_HISTORY_SIZE) newUndoStack.shift();
     set({
-      undoStack: [...undoStack, objects],
+      undoStack: newUndoStack,
       redoStack: [],
       objects: objects.filter((obj) => obj.id !== id),
       selectedObjectId: null
@@ -228,8 +237,10 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   clearCanvas: () => {
     const { objects, undoStack } = get();
     if (objects.length === 0) return;
+    const newUndoStack = [...undoStack, objects];
+    if (newUndoStack.length > MAX_HISTORY_SIZE) newUndoStack.shift();
     set({
-      undoStack: [...undoStack, objects],
+      undoStack: newUndoStack,
       redoStack: [],
       objects: [],
       selectedObjectId: null

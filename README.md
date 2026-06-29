@@ -155,9 +155,9 @@ Requires Python 3.12+ and system-level **Tesseract OCR** (optional, recommended)
     ```bash
     pip install -r requirements.txt
     ```
-3.  Start Uvicorn:
+3.  Start Uvicorn from the **project root** directory:
     ```bash
-    uvicorn app:app --reload --port 8000
+    uvicorn backend.app:app --reload --port 8000
     ```
 
 #### 2. Frontend Setup (React + Vite)

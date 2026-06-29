@@ -360,7 +360,7 @@ export const WhiteboardCanvas: React.FC = () => {
       } 
       
       else if (obj.type === 'text') {
-        ctx.font = `semibold ${obj.fontSize}px Inter, sans-serif`;
+        ctx.font = `600 ${obj.fontSize}px Inter, sans-serif`;
         ctx.textBaseline = 'top';
         ctx.fillText(obj.content, obj.x, obj.y);
       }
