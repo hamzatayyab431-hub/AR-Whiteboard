@@ -1,9 +1,10 @@
 import os
 import sys
+import time
 import psutil
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -14,6 +15,9 @@ from backend.db import init_db, list_sessions, load_session, save_session, delet
 from backend.ocr import run_ocr, parse_and_solve_math, init_ocr_engines
 from backend.export import export_to_image, export_to_svg, export_to_pdf
 from backend.utils import base64_to_cv2
+
+APP_VERSION = "1.1.0"
+_startup_time: float = 0.0
 
 # Schema definitions
 class SaveRequest(BaseModel):
@@ -33,7 +37,9 @@ class OCRRequest(BaseModel):
 # Lifespan manager for FastAPI
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _startup_time
     # Startup actions
+    _startup_time = time.time()
     logger.info("Starting up FastAPI Whiteboard Backend...")
     try:
         await init_db()
@@ -63,9 +69,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def log_request_timing(request: Request, call_next):
+    """Middleware that logs every request with its processing duration."""
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration_ms:.1f}ms)")
+    response.headers["X-Process-Time-Ms"] = f"{duration_ms:.1f}"
+    return response
+
 @app.get("/status")
-def get_status():
-    """Gets backend system status and resource metrics."""
+async def get_status():
+    """Gets backend system status, resource metrics, version, and uptime."""
     try:
         cpu_usage = psutil.cpu_percent(interval=None)
         memory = psutil.virtual_memory()
@@ -75,8 +91,19 @@ def get_status():
         cpu_usage = 10.0
         memory_usage = 25.0
 
+    uptime_seconds = int(time.time() - _startup_time) if _startup_time else 0
+
+    try:
+        sessions = await list_sessions()
+        session_count = len(sessions)
+    except Exception:
+        session_count = -1
+
     return {
         "status": "online",
+        "version": APP_VERSION,
+        "uptime_seconds": uptime_seconds,
+        "session_count": session_count,
         "cpu_usage_percent": cpu_usage,
         "memory_usage_percent": memory_usage,
         "features": {
