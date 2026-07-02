@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
+import { useToast } from './Toast';
 import { 
   Undo, 
   Redo, 
@@ -29,6 +30,8 @@ export const Toolbar: React.FC = () => {
     activeSessionName,
     setSessionMeta
   } = useWhiteboardStore();
+
+  const { toast } = useToast();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [sessionNameInput, setSessionNameInput] = useState(activeSessionName);
@@ -76,12 +79,13 @@ export const Toolbar: React.FC = () => {
           spread: 60,
           origin: { y: 0.1, x: 0.5 }
         });
+        toast('Session saved successfully!', 'success');
       } else {
-        alert("Failed to save session: " + data.message);
+        toast('Failed to save session: ' + (data.message ?? 'Unknown error'), 'error');
       }
     } catch (err) {
-      console.error("Save failed:", err);
-      alert("Backend offline. Setup connection to save session.");
+      console.error('Save failed:', err);
+      toast('Backend offline. Setup connection to save session.', 'error');
     }
   };
 
@@ -135,12 +139,13 @@ export const Toolbar: React.FC = () => {
 
       if (response.ok) {
         setOcrResult(data);
+        toast('Handwriting recognized!', 'success');
       } else {
-        alert("OCR failed: " + data.detail);
+        toast('OCR failed: ' + data.detail, 'error');
       }
     } catch (err) {
-      console.error("OCR execution failed:", err);
-      alert("OCR failed. Check backend connection.");
+      console.error('OCR execution failed:', err);
+      toast('OCR failed. Check backend connection.', 'error');
     } finally {
       setOcrLoading(false);
     }
@@ -173,8 +178,8 @@ export const Toolbar: React.FC = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export generation failed:", err);
-      alert("Failed to export. Verify backend is running.");
+      console.error('Export generation failed:', err);
+      toast('Failed to export. Verify backend is running.', 'error');
     }
   };
 
