@@ -1,9 +1,14 @@
-import json
+import html
 import io
 import math
 from typing import List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont
 from loguru import logger
+
+
+def _sanitize_svg_text(text: str) -> str:
+    """Escapes HTML/XML entities to prevent XSS injection in SVG output."""
+    return html.escape(text, quote=True)
 
 def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int = 1080) -> str:
     """Exports canvas objects to a vector SVG string."""
@@ -84,10 +89,10 @@ def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int 
         elif obj_type == "text":
             x = obj.get("x", 0)
             y = obj.get("y", 0)
-            content = obj.get("content", "")
+            content = _sanitize_svg_text(obj.get("content", ""))
             font_size = obj.get("fontSize", 20)
             
-            # Simple text alignment
+            # Simple text alignment (content is sanitized against XSS)
             svg_elements.append(
                 f'<text x="{x}" y="{y}" fill="{color}" font-family="system-ui, sans-serif" font-size="{font_size}" dominant-baseline="hanging">{content}</text>'
             )

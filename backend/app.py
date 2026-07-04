@@ -25,20 +25,20 @@ _rate_limit_store: Dict[str, list] = defaultdict(list)
 RATE_LIMIT_MAX_REQUESTS = 100  # max requests per window
 RATE_LIMIT_WINDOW_SECONDS = 60  # sliding window duration
 
-# Schema definitions
+# Schema definitions with input validation
 class SaveRequest(BaseModel):
-    session_id: str
-    name: str
-    objects: List[Dict[str, Any]]
+    session_id: str = Field(..., min_length=1, max_length=36, description="UUID of the session")
+    name: str = Field(..., min_length=1, max_length=100, description="Human-readable session name")
+    objects: List[Dict[str, Any]] = Field(default_factory=list, max_length=10000, description="Canvas objects (max 10,000)")
 
 class ExportRequest(BaseModel):
-    objects: List[Dict[str, Any]]
-    format: str  # "png", "jpeg", "svg", "pdf"
-    width: Optional[int] = 1920
-    height: Optional[int] = 1080
+    objects: List[Dict[str, Any]] = Field(default_factory=list, max_length=10000)
+    format: str = Field(..., pattern=r"^(png|jpeg|jpg|svg|pdf)$", description="Export format")
+    width: Optional[int] = Field(default=1920, ge=1, le=7680, description="Canvas width (max 8K)")
+    height: Optional[int] = Field(default=1080, ge=1, le=4320, description="Canvas height (max 8K)")
 
 class OCRRequest(BaseModel):
-    image: str  # Base64 encoded screenshot of the drawing mask
+    image: str = Field(..., max_length=10_485_760, description="Base64 encoded image (max ~10MB)")
 
 # Lifespan manager for FastAPI
 @asynccontextmanager
