@@ -128,8 +128,8 @@ def run_ocr(img: np.ndarray) -> str:
         logger.error(f"OCR execution failed: {e}")
         
     # Mock / Fallback if OCR is not installed (good for local quick tests / recruiter preview)
-    logger.warning("OCR engines failed or are unavailable. Simulating handwriting OCR.")
-    return "2 + 2 = ?"
+    logger.warning("OCR engines failed or are unavailable. Returning empty string.")
+    return ""
 
 def parse_and_solve_math(text: str) -> dict:
     """Parses a text formula, converts it to LaTeX, and evaluates using SymPy."""

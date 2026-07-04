@@ -267,7 +267,7 @@ def export_canvas(payload: ExportRequest):
         elif fmt in ("png", "jpeg", "jpg"):
             img_format = "JPEG" if fmt in ("jpeg", "jpg") else "PNG"
             mime_type = "image/jpeg" if fmt in ("jpeg", "jpg") else "image/png"
-            img_bytes = export_to_image(payload.objects, format=img_format)
+            img_bytes = export_to_image(payload.objects, format=img_format, width=payload.width, height=payload.height)
             return Response(
                 content=img_bytes,
                 media_type=mime_type,
@@ -275,7 +275,7 @@ def export_canvas(payload: ExportRequest):
             )
             
         elif fmt == "pdf":
-            pdf_bytes = export_to_pdf(payload.objects)
+            pdf_bytes = export_to_pdf(payload.objects, width=payload.width, height=payload.height)
             return Response(
                 content=pdf_bytes,
                 media_type="application/pdf",

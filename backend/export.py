@@ -192,9 +192,9 @@ def render_to_pil(objects: List[Dict[str, Any]], width: int = 1920, height: int 
 
     return img
 
-def export_to_image(objects: List[Dict[str, Any]], format: str = "PNG") -> bytes:
-    """Renders objects and exports to a PNG/JPEG bytes stream."""
-    img = render_to_pil(objects)
+def export_to_image(objects: List[Dict[str, Any]], format: str = "PNG", width: int = 1920, height: int = 1080) -> bytes:
+    """Renders objects and exports to a PNG/JPEG bytes stream with custom dimensions."""
+    img = render_to_pil(objects, width, height)
     output = io.BytesIO()
     
     # JPEG does not support alpha channel transparency
@@ -206,10 +206,10 @@ def export_to_image(objects: List[Dict[str, Any]], format: str = "PNG") -> bytes
         
     return output.getvalue()
 
-def export_to_pdf(objects: List[Dict[str, Any]]) -> bytes:
-    """Renders objects to PDF pages and returns as bytes."""
+def export_to_pdf(objects: List[Dict[str, Any]], width: int = 1920, height: int = 1080) -> bytes:
+    """Renders objects to PDF pages and returns as bytes with custom dimensions."""
     # Convert PNG image to PDF
-    img = render_to_pil(objects)
+    img = render_to_pil(objects, width, height)
     img_rgb = img.convert("RGB")
     
     output = io.BytesIO()
