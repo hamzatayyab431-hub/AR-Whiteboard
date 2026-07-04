@@ -14,6 +14,12 @@ services:
     environment:
       - DATABASE_URL=sqlite+aiosqlite:////app/ar_whiteboard.db
       - OCR_ENGINE=easyocr
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
 volumes:

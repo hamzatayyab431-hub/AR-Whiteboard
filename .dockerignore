@@ -1,0 +1,33 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.venv
+venv
+ENV
+env
+*.egg-info
+
+# Node
+frontend/node_modules
+frontend/.next
+
+# IDE and OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Data files
+*.db
+logs/
+data/
+
+# Documentation
+README.md
+*.md
