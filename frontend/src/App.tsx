@@ -11,8 +11,7 @@ import ToastProvider from './components/Toast';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Hand, Sparkles } from 'lucide-react';
 
-// Centralised backend URL — change once here to switch environments
-const API_BASE_URL = 'http://localhost:8000';
+import { API_BASE_URL } from './config';
 
 export const App: React.FC = () => {
   const {
