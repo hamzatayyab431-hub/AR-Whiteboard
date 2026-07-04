@@ -14,6 +14,8 @@ class WhiteboardSession(Base):
     
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(100), nullable=False)
+    # SQLite does not support timezone-aware datetimes out of the box. 
+    # We store as naive datetime in UTC (stripping tzinfo) to maintain cross-platform database compatibility.
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
