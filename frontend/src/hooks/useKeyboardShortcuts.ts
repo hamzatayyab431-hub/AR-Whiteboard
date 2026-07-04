@@ -78,7 +78,7 @@ export function useKeyboardShortcuts() {
       }
 
       // ── Toggle grid (G key) ───────────────────────────────────────────────
-      if (!ctrl && e.key.toLowerCase() === 'g') {
+      if (!ctrl && (e.key.toLowerCase() === 'g')) {
         e.preventDefault();
         toggleGrid();
         return;
