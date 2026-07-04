@@ -16,8 +16,10 @@ def event_loop():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup_test_db():
+def setup_test_db(event_loop):
     """Set up and tear down the test database."""
+    from backend.db import init_db
+    event_loop.run_until_complete(init_db())
     yield
 
     # Teardown: dispose the async engine and delete the test database file

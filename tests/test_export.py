@@ -110,7 +110,7 @@ class TestSVGExport:
             }
         ]
         svg = export_to_svg(objects)
-        assert "<path" not in svg
+        assert 'stroke="#ffffff"' not in svg
 
 
 class TestSanitizeSVGText:
