@@ -1,13 +1,14 @@
 import os
 import sys
 import time
+from collections import defaultdict
 import psutil
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from loguru import logger
 
 from backend.config import settings
@@ -16,8 +17,13 @@ from backend.ocr import run_ocr, parse_and_solve_math, init_ocr_engines
 from backend.export import export_to_image, export_to_svg, export_to_pdf
 from backend.utils import base64_to_cv2
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 _startup_time: float = 0.0
+
+# Simple in-memory rate limiter: tracks request timestamps per client IP
+_rate_limit_store: Dict[str, list] = defaultdict(list)
+RATE_LIMIT_MAX_REQUESTS = 100  # max requests per window
+RATE_LIMIT_WINDOW_SECONDS = 60  # sliding window duration
 
 # Schema definitions
 class SaveRequest(BaseModel):
@@ -56,7 +62,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AR Whiteboard Backend",
     description="Production-grade AI-powered AR Whiteboard API",
-    version="1.0.0",
+    version=APP_VERSION,
     lifespan=lifespan
 )
 
@@ -70,6 +76,34 @@ app.add_middleware(
 )
 
 @app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Simple sliding-window rate limiter per client IP."""
+    # Skip rate limiting for health/status checks
+    if request.url.path in ("/health", "/status"):
+        return await call_next(request)
+
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW_SECONDS
+
+    # Prune old timestamps and append current
+    _rate_limit_store[client_ip] = [
+        ts for ts in _rate_limit_store[client_ip] if ts > window_start
+    ]
+
+    if len(_rate_limit_store[client_ip]) >= RATE_LIMIT_MAX_REQUESTS:
+        logger.warning(f"Rate limit exceeded for {client_ip}")
+        return Response(
+            content='{"detail":"Rate limit exceeded. Try again later."}',
+            status_code=429,
+            media_type="application/json",
+            headers={"Retry-After": str(RATE_LIMIT_WINDOW_SECONDS)}
+        )
+
+    _rate_limit_store[client_ip].append(now)
+    return await call_next(request)
+
+@app.middleware("http")
 async def log_request_timing(request: Request, call_next):
     """Middleware that logs every request with its processing duration."""
     start = time.perf_counter()
@@ -78,6 +112,11 @@ async def log_request_timing(request: Request, call_next):
     logger.info(f"{request.method} {request.url.path} → {response.status_code} ({duration_ms:.1f}ms)")
     response.headers["X-Process-Time-Ms"] = f"{duration_ms:.1f}"
     return response
+
+@app.get("/health")
+async def health_check():
+    """Lightweight liveness probe for container orchestrators (Docker, K8s)."""
+    return {"status": "ok"}
 
 @app.get("/status")
 async def get_status():
