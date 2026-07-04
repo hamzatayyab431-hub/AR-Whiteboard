@@ -7,7 +7,13 @@ __pycache__/
 venv/
 ENV/
 env/
+*.egg-info/
+
+# Database files
 ar_whiteboard.db
+test_whiteboard.db
+
+# Logs
 logs/
 
 # Node environment & builds
@@ -20,3 +26,11 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Docker
+.dockerignore
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
