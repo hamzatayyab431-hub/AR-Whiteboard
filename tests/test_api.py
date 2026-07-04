@@ -60,4 +60,46 @@ def test_invalid_export_format():
         "format": "exe"
     }
     response = client.post("/export", json=payload)
-    assert response.status_code == 400
+    assert response.status_code == 422  # Pydantic validation rejects invalid format
+
+def test_health_endpoint():
+    """The /health liveness probe should always return 200 with status ok."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+def test_session_not_found():
+    """Requesting a non-existent session should return 404."""
+    response = client.get("/sessions/non-existent-uuid-000")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+def test_delete_session_not_found():
+    """Deleting a non-existent session should return 404."""
+    response = client.delete("/sessions/non-existent-uuid-999")
+    assert response.status_code == 404
+
+def test_export_pdf_endpoint():
+    """PDF export should return application/pdf content type."""
+    payload = {
+        "objects": [],
+        "format": "pdf",
+        "width": 800,
+        "height": 600
+    }
+    response = client.post("/export", json=payload)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content[:5] == b"%PDF-"
+
+def test_export_jpeg_endpoint():
+    """JPEG export should return image/jpeg content type."""
+    payload = {
+        "objects": [],
+        "format": "jpeg",
+        "width": 400,
+        "height": 300
+    }
+    response = client.post("/export", json=payload)
+    assert response.status_code == 200
+    assert "image/jpeg" in response.headers["content-type"]
