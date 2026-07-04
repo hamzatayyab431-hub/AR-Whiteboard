@@ -115,14 +115,34 @@ erDiagram
 
 The FastAPI backend exposes the following REST routes:
 
-*   `GET /status`: Returns server health, CPU usage, memory utilization, and active feature flags.
+*   `GET /health`: Lightweight liveness probe returning `{"status": "ok"}`.
+*   `GET /status`: Returns server health, CPU usage, memory utilization, version, uptime, and active feature flags.
 *   `GET /settings`: Returns server defaults and engine configs.
 *   `GET /sessions`: Lists all saved session metadata.
 *   `GET /sessions/{session_id}`: Retrieves canvas objects for a session.
 *   `DELETE /sessions/{session_id}`: Removes session and children.
 *   `POST /save`: Saves or updates session canvas layers.
 *   `POST /ocr`: Runs handwriting OCR and math solving on base64 image masks.
-*   `POST /export`: Generates binary downloads (PNG, JPEG, SVG, PDF).
+*   `POST /export`: Generates binary downloads (PNG, JPEG, SVG, PDF) with custom dimensions support.
+
+### 🛡️ Security & Rate Limiting
+*   **Rate Limiting:** Protects endpoints from abuse with an in-memory sliding window rate limiter (capped at **100 requests / minute per client IP**). Returns a `429 Too Many Requests` header with `Retry-After`.
+*   **Input Validation:** Strict Pydantic schemas enforce type safety and constraints (e.g., maximum of 10,000 canvas objects per request, export width/height bounds restricted up to 8K resolution, and base64 image payload size limits).
+*   **XSS Protection:** Escapes HTML and XML entities during vector SVG export to prevent cross-site scripting vulnerabilities from malicious text overlay content.
+
+---
+
+## ⌨️ Keyboard Shortcuts Reference
+
+| Shortcut | Action |
+| :--- | :--- |
+| **Ctrl + Z** | Undo the last stroke |
+| **Ctrl + Y** / **Ctrl + Shift + Z** | Redo the last popped stroke |
+| **Ctrl + S** | Save the current whiteboard session |
+| **Delete** / **Backspace** | Delete the selected canvas object |
+| **Escape** | Deselect the active object |
+| **G** | Toggle the infinite dot grid background |
+| **1 – 7** | Quick-switch tools: `1: Select`, `2: Brush`, `3: Highlighter`, `4: Shapes`, `5: Text`, `6: Laser`, `7: Eraser` |
 
 ---
 
@@ -134,13 +154,14 @@ Make sure you have [Docker](https://www.docker.com/) and Docker Compose installe
 
 1.  Clone this repository:
     ```bash
-    git clone https://github.com/yourusername/ar-whiteboard.git
-    cd ar-whiteboard
+    git clone https://github.com/hamzatayyab431-hub/AR-Whiteboard.git
+    cd AR-Whiteboard
     ```
 2.  Launch the unified application:
     ```bash
     docker compose up --build
     ```
+    *Note: The container runs securely as a non-root user (`appuser`), verifies service health using a built-in Docker `HEALTHCHECK` probe against the `/health` endpoint, and utilizes `.dockerignore` for fast, lightweight builds.*
 3.  Access the whiteboard at **`http://localhost:8000`**. The SQLite database is created in the root folder as `ar_whiteboard.db`.
 
 ### Option B: Native Local Installation
@@ -168,7 +189,7 @@ Requires Node.js 18+.
     ```
 2.  Install dependencies:
     ```bash
-    npm install
+    npm ci
     ```
 3.  Start development server:
     ```bash
@@ -180,15 +201,16 @@ Requires Node.js 18+.
 
 ## 🧪 Automated Testing
 
-Run backend tests using `pytest`:
+Run backend tests using `pytest` from the virtual environment:
 ```bash
 # In the project root directory
-pytest
+python -m pytest
 ```
 Tests cover:
 *   Asynchronous database CRUD operations (`tests/test_db.py`)
 *   SymPy LaTeX conversion and symbolic equation solutions (`tests/test_ocr.py`)
-*   FastAPI endpoints routing and file formatting (`tests/test_api.py`)
+*   FastAPI endpoints routing, rate limiting, and file formatting (`tests/test_api.py`)
+*   High-fidelity multi-format export engines (`tests/test_export.py`)
 
 ---
 
