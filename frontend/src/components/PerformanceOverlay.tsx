@@ -96,6 +96,10 @@ export const PerformanceOverlay: React.FC = () => {
                 {calibrationState === 'calibrated' ? 'Active' : 'Default'}
               </span>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-500">Tracking Engine:</span>
+              <span className="text-blue-400 font-semibold">MediaPipe 2D+</span>
+            </div>
           </div>
 
           {/* Backend Metrics */}
