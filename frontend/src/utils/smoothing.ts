@@ -7,7 +7,7 @@ export class OneEuroFilter {
   private dxPrev: number = 0;
   private tPrev: number | null = null;
 
-  constructor(minCutoff = 1.0, beta = 0.007, dCutoff = 1.0) {
+  constructor(minCutoff = 1.0, beta = 0.03, dCutoff = 1.0) {
     this.minCutoff = minCutoff;
     this.beta = beta;
     this.dCutoff = dCutoff;
@@ -31,13 +31,18 @@ export class OneEuroFilter {
 
     const rate = 1.0 / dt;
     
-    // Calculate derivative and smooth it
+    // Calculate derivative (velocity) and smooth it
     const dx = (value - this.xPrev) * rate;
     const dAlpha = this.alpha(this.dCutoff, rate);
     const dxSmoothed = this.dxPrev + dAlpha * (dx - this.dxPrev);
     
-    // Calculate adaptive cutoff based on speed (absolute value of smoothed velocity)
-    const cutoff = this.minCutoff + this.beta * Math.abs(dxSmoothed);
+    // Calculate acceleration change to detect sharp turns in handwriting
+    const dAcc = Math.abs(dxSmoothed - this.dxPrev) * rate;
+    
+    // Adaptive cutoff boost: when accelerating around corners, open cutoff up to preserve crisp angles
+    const speed = Math.abs(dxSmoothed);
+    const accelBoost = Math.min(15.0, dAcc * 0.005);
+    const cutoff = this.minCutoff + this.beta * speed + accelBoost;
     
     // Smooth the value
     const valAlpha = this.alpha(cutoff, rate);
@@ -67,7 +72,7 @@ export class PointSmoother {
   private filterX: OneEuroFilter;
   private filterY: OneEuroFilter;
 
-  constructor(minCutoff = 1.5, beta = 0.05) {
+  constructor(minCutoff = 1.2, beta = 0.03) {
     this.filterX = new OneEuroFilter(minCutoff, beta);
     this.filterY = new OneEuroFilter(minCutoff, beta);
   }
@@ -128,3 +133,4 @@ export class KalmanFilter1D {
     this.isInitialized = false;
   }
 }
+
