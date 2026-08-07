@@ -14,21 +14,24 @@ export const useHandPose = () => {
     const initLandmarker = async () => {
       try {
         setIsLoading(true);
-        // Load WebAssembly fileset resolver from CDN
+        // Load WebAssembly fileset resolver
         const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
         );
 
         if (!active) return;
 
-        // Initialize hand landmarker with float16 model
+        // Initialize hand landmarker with explicit tracking and detection confidence
         const landmarker = await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
             delegate: "GPU",
           },
           runningMode: "VIDEO",
-          numHands: 2,
+          numHands: 1,
+          minHandDetectionConfidence: 0.6,
+          minHandTrackingConfidence: 0.6,
+          minTrackingConfidence: 0.6,
         });
 
         if (!active) {
@@ -61,14 +64,17 @@ export const useHandPose = () => {
   const detectHands = (video: HTMLVideoElement, timestamp: number) => {
     if (!landmarkerRef.current) return null;
     
-    const startTime = performance.now();
-    const result = landmarkerRef.current.detectForVideo(video, timestamp);
-    const latency = performance.now() - startTime;
-    
-    // Log latency to state store
-    setPerformanceMetrics({ wasmLatency: latency });
-    
-    return result;
+    try {
+      const startTime = performance.now();
+      const result = landmarkerRef.current.detectForVideo(video, timestamp);
+      const latency = performance.now() - startTime;
+      
+      setPerformanceMetrics({ wasmLatency: latency });
+      return result;
+    } catch (err) {
+      console.warn("Hand detection frame error:", err);
+      return null;
+    }
   };
 
   return {
@@ -77,3 +83,4 @@ export const useHandPose = () => {
     detectHands,
   };
 };
+
