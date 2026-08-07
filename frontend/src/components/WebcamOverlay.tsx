@@ -135,15 +135,16 @@ export const WebcamOverlay: React.FC = () => {
 
         // 3. Process pointer position (Index finger tip is landmark 8)
         const indexTip = handLandmarks[8];
-        // Mirror the X coordinate since webcam is mirrored
-        const pointerX = (1 - indexTip.x);
-        const pointerY = indexTip.y;
         
-        if (pointerX === 0 && pointerY === 0) {
+        // Mirror the X coordinate since webcam is mirrored
+        const rawPointerX = 1 - indexTip.x;
+        const rawPointerY = indexTip.y;
+
+        if (rawPointerX === 0 && rawPointerY === 0) {
           stabilizerRef.current.reset();
           setPointerPos({ x: 0, y: 0 });
         } else {
-          setPointerPos({ x: pointerX, y: pointerY });
+          setPointerPos({ x: rawPointerX, y: rawPointerY });
         }
 
         // 4. Handle state machine (Calibration & Debounced Actions)
