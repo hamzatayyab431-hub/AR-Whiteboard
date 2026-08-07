@@ -99,7 +99,7 @@ export function detectAndFitShape(points: Point[]): {
   const end = points[points.length - 1];
   const startEndDist = getDistance(start, end);
   const maxDimension = Math.max(w, h);
-  const isClosed = startEndDist < maxDimension * 0.35;
+  const isClosed = points.length >= 8 && startEndDist < maxDimension * 0.25;
 
   // 3. Simplify path to count vertices
   const epsilon = maxDimension * 0.04;
