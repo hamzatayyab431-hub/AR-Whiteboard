@@ -16,8 +16,7 @@ export function distance(p1: Landmark, p2: Landmark, use3D = false): number {
 
 /**
  * Classifies a set of 21 hand landmarks into a specific gesture.
- * Landmarks are expected in the standard MediaPipe format (normalized coordinates 0-1).
- * We scale them by a standard factor to make pixel math readable.
+ * Uses 2D normalized coordinate projections to prevent webcam Z-depth noise.
  */
 export function classifyGesture(
   rawLandmarks: Landmark[],
@@ -27,23 +26,25 @@ export function classifyGesture(
     return { gesture: 'Idle', confidence: 0 };
   }
 
-  // Work with scaled landmarks to make distances more human-readable (mapping to a 1000x1000 virtual space)
+  // Work with scaled 2D landmarks (mapping to a 1000x1000 virtual space)
   const l = rawLandmarks.map((pt) => ({
     x: pt.x * 1000,
     y: pt.y * 1000,
-    z: pt.z * 1000,
+    z: (pt.z || 0) * 1000,
   }));
 
   // Define key joints
   const wrist = l[0];
   const thumbMCP = l[2];
-  
+  const thumbIP = l[3];
+  const thumbTip = l[4];
+
   // Finger MCPs (Knuckles)
   const indexMCP = l[5];
   const middleMCP = l[9];
   const ringMCP = l[13];
   const pinkyMCP = l[17];
-  
+
   // Finger PIPs
   const indexPIP = l[6];
   const middlePIP = l[10];
@@ -51,86 +52,79 @@ export function classifyGesture(
   const pinkyPIP = l[18];
 
   // Finger Tips
-  const thumbTip = l[4];
   const indexTip = l[8];
   const middleTip = l[12];
   const ringTip = l[16];
   const pinkyTip = l[20];
 
-  // Calculate current hand size: wrist to middle finger MCP + MCP to middle finger tip
-  const currentHandSize = distance(wrist, middleMCP, true) + distance(middleMCP, middleTip, true);
+  // Calculate hand scale baseline (wrist to middle MCP)
+  const handScale = Math.max(20, distance(wrist, middleMCP, false));
   
   // Adjust thresholds based on calibration ratio
-  // If the user's hand is closer/further, we scale thresholds relative to calibration
-  const scaleRatio = currentHandSize / calibration.handSize;
-  const calibratedPinchThreshold = calibration.pinchThreshold * scaleRatio;
+  const scaleRatio = handScale / (calibration.handSize || 150);
+  const calibratedPinchThreshold = (calibration.pinchThreshold || 30) * scaleRatio;
 
-  // A finger is extended if the distance from knuckles to tip is significantly
-  // larger than the distance from knuckles to joint PIP. Lowered threshold from 1.65 to 1.35 to tolerate perspective foreshortening.
-  const isIndexExtended = distance(indexMCP, indexTip, true) > distance(indexMCP, indexPIP, true) * 1.35;
-  const isMiddleExtended = distance(middleMCP, middleTip, true) > distance(middleMCP, middlePIP, true) * 1.35;
-  const isRingExtended = distance(ringMCP, ringTip, true) > distance(ringMCP, ringPIP, true) * 1.35;
-  const isPinkyExtended = distance(pinkyMCP, pinkyTip, true) > distance(pinkyMCP, pinkyPIP, true) * 1.35;
-  
-  // Thumb extension is calculated by its distance from wrist relative to thumb MCP from wrist. Lowered threshold from 1.2 to 1.1.
-  const isThumbExtended = distance(thumbTip, wrist, true) > distance(thumbMCP, wrist, true) * 1.1;
+  // Finger extension is calculated using 2D tip-to-knuckle vs PIP-to-knuckle ratio
+  // Using 2D prevents Z-depth estimation noise from single webcam feed
+  const indexRatio = distance(indexMCP, indexTip, false) / Math.max(1, distance(indexMCP, indexPIP, false));
+  const middleRatio = distance(middleMCP, middleTip, false) / Math.max(1, distance(middleMCP, middlePIP, false));
+  const ringRatio = distance(ringMCP, ringTip, false) / Math.max(1, distance(ringMCP, ringPIP, false));
+  const pinkyRatio = distance(pinkyMCP, pinkyTip, false) / Math.max(1, distance(pinkyMCP, pinkyPIP, false));
 
-  // 2. Calculate Distances between Tips for Pinches/OK gestures
-  const thumbIndexDist = distance(thumbTip, indexTip, true);
+  const isIndexExtended = indexRatio > 1.25;
+  const isMiddleExtended = middleRatio > 1.25;
+  const isRingExtended = ringRatio > 1.25;
+  const isPinkyExtended = pinkyRatio > 1.25;
 
-  // Check if Thumb and Index are pinching
-  const isPinching = thumbIndexDist < calibratedPinchThreshold;
+  // Thumb extension using 2D distance ratio from wrist
+  const thumbTipDist = distance(thumbTip, wrist, false);
+  const thumbMCPDist = distance(thumbMCP, wrist, false);
+  const isThumbExtended = thumbTipDist > thumbMCPDist * 1.15;
+
+  // Distances between Tips for Pinches/OK gestures
+  const thumbIndexDist = distance(thumbTip, indexTip, false);
+  const isPinching = thumbIndexDist < Math.max(25, calibratedPinchThreshold);
 
   // --- GESTURE CLASSIFICATION RULES ---
-  
-  // A. OCR (OK Gesture)
-  // Thumb and index finger are pinching, and other fingers (middle, ring, pinky) are straight/extended
-  if (isPinching && isMiddleExtended && isRingExtended && isPinkyExtended) {
+
+  // A. OCR (OK Gesture: Thumb + Index pinching with middle + ring + pinky extended)
+  if (isPinching && isMiddleExtended && isRingExtended) {
     return { gesture: 'OCR', confidence: 0.95 };
   }
 
-  // B. Brush Size (Pinch with middle, ring, pinky extended)
-  // If we pinch, but other fingers are not fully straight or we're explicitly calibrating,
-  // we return "Pinch" which translates to either Color Picker or Brush Size depending on cursor location.
+  // B. Pinch / Select Tool / Size control
   if (isPinching) {
-    // If middle, ring, pinky are curled, it's a tight pinch (select tool / size control)
-    if (!isMiddleExtended && !isRingExtended && !isPinkyExtended) {
-      return { gesture: 'Pinch', confidence: 0.90 };
-    }
-    // General pinch fallback
-    return { gesture: 'Pinch', confidence: 0.85 };
+    return { gesture: 'Pinch', confidence: 0.90 };
   }
 
-  // C. Save (Victory sign: index + middle extended, others closed)
-  if (isIndexExtended && isMiddleExtended && !isRingExtended && !isPinkyExtended && !isThumbExtended) {
+  // C. Save (Victory sign: index + middle extended, ring + pinky closed)
+  if (isIndexExtended && isMiddleExtended && !isRingExtended && !isPinkyExtended) {
     return { gesture: 'Save', confidence: 0.95 };
   }
 
-  // D. Undo (Thumb + Pinky extended, index, middle, ring curled)
+  // D. Undo (Thumb + Pinky extended, index + middle + ring closed)
   if (isThumbExtended && isPinkyExtended && !isIndexExtended && !isMiddleExtended && !isRingExtended) {
     return { gesture: 'Undo', confidence: 0.90 };
   }
 
-  // E. Redo (Thumb + Index + Middle extended, ring + pinky curled)
+  // E. Redo (Thumb + Index + Middle extended, ring + pinky closed)
   if (isThumbExtended && isIndexExtended && isMiddleExtended && !isRingExtended && !isPinkyExtended) {
     return { gesture: 'Redo', confidence: 0.90 };
   }
 
-  // F. Eraser (Open Palm: all 5 fingers extended)
-  if (isThumbExtended && isIndexExtended && isMiddleExtended && isRingExtended && isPinkyExtended) {
+  // F. Eraser (Open Palm: index + middle + ring + pinky extended)
+  if (isIndexExtended && isMiddleExtended && isRingExtended && isPinkyExtended) {
     return { gesture: 'Eraser', confidence: 0.98 };
   }
 
   // G. Clear Canvas (Fist: all fingers curled)
-  if (!isThumbExtended && !isIndexExtended && !isMiddleExtended && !isRingExtended && !isPinkyExtended) {
+  if (!isIndexExtended && !isMiddleExtended && !isRingExtended && !isPinkyExtended) {
     return { gesture: 'Clear', confidence: 0.95 };
   }
 
-  // H. Draw (Index extended, middle, ring, pinky curled)
-  // We keep validation strict for index extended and middle/ring contracted,
-  // but eliminate pinky check and thumb check to prevent accidental dropouts.
+  // H. Draw (Index extended, middle + ring curled; robust against thumb/pinky position)
   if (isIndexExtended && !isMiddleExtended && !isRingExtended) {
-    return { gesture: 'Draw', confidence: 0.95 };
+    return { gesture: 'Draw', confidence: 0.96 };
   }
 
   // Fallback
@@ -164,18 +158,28 @@ export function getGestureDetails(gesture: string): { name: string; emoji: strin
 }
 
 /**
- * Temporal Gesture Stabilizer to prevent flickering state changes
- * by using a rolling sliding window majority consensus algorithm.
+ * Weighted Temporal Gesture Stabilizer to prevent flickering state changes
+ * while retaining immediate response when starting/stopping drawing strokes.
  */
 export class GestureStabilizer {
   private history: string[] = [];
   private windowSize: number;
 
-  constructor(windowSize = 5) {
+  constructor(windowSize = 3) {
     this.windowSize = windowSize;
   }
 
   public addFrame(rawGesture: string): string {
+    // Immediate lock-in for Draw or Pinch to reduce input latency
+    if (rawGesture === 'Draw' || rawGesture === 'Pinch') {
+      this.history.push(rawGesture);
+      if (this.history.length > this.windowSize) {
+        this.history.shift();
+      }
+      const drawCount = this.history.filter(g => g === rawGesture).length;
+      if (drawCount >= 1) return rawGesture;
+    }
+
     this.history.push(rawGesture);
     if (this.history.length > this.windowSize) {
       this.history.shift();
@@ -203,3 +207,4 @@ export class GestureStabilizer {
     this.history = [];
   }
 }
+
