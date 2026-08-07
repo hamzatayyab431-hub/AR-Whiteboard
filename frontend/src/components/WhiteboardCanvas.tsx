@@ -456,15 +456,23 @@ export const WhiteboardCanvas: React.FC = () => {
         setActivePoints([initialCanvasPt]);
       } else {
         const lastPt = activePointsRef.current[activePointsRef.current.length - 1];
-        // Scale threshold dynamically as (150 / zoom) to ensure physical consistency in screen pixels
-        if (lastPt && getDistance(lastPt, canvasPt) > (150 / zoom)) {
-          // Hand tracking resumed far away; finalize the previous stroke and start a new one
-          finalizeActiveStroke();
-          smootherRef.current.reset();
-          const initialSmoothedScreen = smootherRef.current.smooth(scr.x, scr.y);
-          const initialCanvasPt = screenToCanvas(initialSmoothedScreen.x, initialSmoothedScreen.y);
-          setIsDrawing(true);
-          setActivePoints([initialCanvasPt]);
+        if (lastPt) {
+          const dist = getDistance(lastPt, canvasPt);
+          // Suppress sub-pixel jitter points under 1.5 screen pixels
+          if (dist < 1.5 / zoom) {
+            return;
+          }
+          // Hand tracking resumed far away; finalize previous stroke and start a new one
+          if (dist > (150 / zoom)) {
+            finalizeActiveStroke();
+            smootherRef.current.reset();
+            const initialSmoothedScreen = smootherRef.current.smooth(scr.x, scr.y);
+            const initialCanvasPt = screenToCanvas(initialSmoothedScreen.x, initialSmoothedScreen.y);
+            setIsDrawing(true);
+            setActivePoints([initialCanvasPt]);
+          } else {
+            setActivePoints(prev => [...prev, canvasPt]);
+          }
         } else {
           setActivePoints(prev => [...prev, canvasPt]);
         }
