@@ -94,7 +94,7 @@ interface WhiteboardState {
   // Actions
   setObjects: (objects: CanvasObject[]) => void;
   addObject: (object: CanvasObject) => void;
-  updateObject: (id: string, updates: Partial<CanvasObject>) => void;
+  updateObject: (id: string, updates: Partial<CanvasObject>, saveHistory?: boolean) => void;
   deleteObject: (id: string) => void;
   undo: () => void;
   redo: () => void;
@@ -178,22 +178,25 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
     });
   },
   
-  updateObject: (id, updates) => {
+  updateObject: (id, updates, saveHistory = true) => {
     const { objects, undoStack } = get();
-    // Save history prior to change
     const updatedObjects = objects.map((obj) => {
       if (obj.id === id) {
         return { ...obj, ...updates } as CanvasObject;
       }
       return obj;
     });
-    const newUndoStack = [...undoStack, objects];
-    if (newUndoStack.length > MAX_HISTORY_SIZE) newUndoStack.shift();
-    set({
-      undoStack: newUndoStack,
-      redoStack: [],
-      objects: updatedObjects
-    });
+    if (saveHistory) {
+      const newUndoStack = [...undoStack, objects];
+      if (newUndoStack.length > MAX_HISTORY_SIZE) newUndoStack.shift();
+      set({
+        undoStack: newUndoStack,
+        redoStack: [],
+        objects: updatedObjects
+      });
+    } else {
+      set({ objects: updatedObjects });
+    }
   },
   
   deleteObject: (id) => {
