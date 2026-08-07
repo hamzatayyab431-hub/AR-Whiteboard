@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useWhiteboardStore } from '../store/useWhiteboardStore';
 import type { Point, CanvasObject, StrokeObject, ShapeObject, TextObject, ToolType, ShapeType } from '../store/useWhiteboardStore';
 import { PointSmoother } from '../utils/smoothing';
-import { detectAndFitShape, getDistance } from '../utils/shapes';
+import { detectAndFitShape, getDistance, getPerpendicularDistance } from '../utils/shapes';
 import { Maximize, ZoomIn, ZoomOut } from 'lucide-react';
 
 export const WhiteboardCanvas: React.FC = () => {
@@ -566,8 +566,22 @@ export const WhiteboardCanvas: React.FC = () => {
     for (let i = objs.length - 1; i >= 0; i--) {
       const obj = objs[i];
       if (obj.type === 'stroke') {
-        // Check if any point is within radius
-        const hit = obj.points.some(p => getDistance(p, { x, y }) < radius + obj.width / 2);
+        const pts = obj.points;
+        let hit = false;
+        const totalRadius = radius + obj.width / 2;
+        for (let j = 0; j < pts.length; j++) {
+          if (getDistance(pts[j], { x, y }) < totalRadius) {
+            hit = true;
+            break;
+          }
+          if (j > 0) {
+            const segDist = getPerpendicularDistance({ x, y }, pts[j - 1], pts[j]);
+            if (segDist < totalRadius) {
+              hit = true;
+              break;
+            }
+          }
+        }
         if (hit) return obj;
       } else if (obj.type === 'shape') {
         const { x: sx, y: sy, width: sw, height: sh } = obj;

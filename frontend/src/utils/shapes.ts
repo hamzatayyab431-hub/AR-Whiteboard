@@ -9,7 +9,7 @@ export function getDistance(p1: Point, p2: Point): number {
 }
 
 // Helper to find the perpendicular distance from a point to a line segment
-function getPerpendicularDistance(p: Point, lineStart: Point, lineEnd: Point): number {
+export function getPerpendicularDistance(p: Point, lineStart: Point, lineEnd: Point): number {
   const dx = lineEnd.x - lineStart.x;
   const dy = lineEnd.y - lineStart.y;
   
