@@ -35,6 +35,7 @@ class ExportRequest(BaseModel):
     format: str = Field(..., pattern=r"^(png|jpeg|jpg|svg|pdf)$", description="Export format")
     width: Optional[int] = Field(default=1920, ge=1, le=7680, description="Canvas width (max 8K)")
     height: Optional[int] = Field(default=1080, ge=1, le=4320, description="Canvas height (max 8K)")
+    background_theme: Optional[str] = Field(default="dark", pattern=r"^(dark|light)$", description="Canvas background theme (dark or light)")
 
 class OCRRequest(BaseModel):
     image: str = Field(..., max_length=10_485_760, description="Base64 encoded image (max ~10MB)")

@@ -10,15 +10,18 @@ def _sanitize_svg_text(text: str) -> str:
     """Escapes HTML/XML entities to prevent XSS injection in SVG output."""
     return html.escape(text, quote=True)
 
-def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int = 1080) -> str:
+def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int = 1080, background_theme: str = "dark") -> str:
     """Exports canvas objects to a vector SVG string."""
+    bg_color = "#ffffff" if background_theme == "light" else "#121212"
+    grid_color = "#e5e7eb" if background_theme == "light" else "#2a2a2a"
+    
     svg_elements = []
-    svg_elements.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" height="100%" style="background-color: #121212;">')
+    svg_elements.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" height="100%" style="background-color: {bg_color};">')
     
     # Grid lines overlay (optional, matches frontend layout)
     svg_elements.append('<defs>')
     svg_elements.append('  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">')
-    svg_elements.append('    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2a2a2a" stroke-width="1"/>')
+    svg_elements.append(f'    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="{grid_color}" stroke-width="1"/>')
     svg_elements.append('  </pattern>')
     svg_elements.append('</defs>')
     svg_elements.append('<rect width="100%" height="100%" fill="url(#grid)" />')
