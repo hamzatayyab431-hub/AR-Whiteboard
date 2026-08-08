@@ -42,7 +42,7 @@ const ACCENT: Record<ToastVariant, string> = {
 const ToastCard: React.FC<{ item: ToastItem; onDismiss: (id: string) => void }> = ({ item, onDismiss }) => (
   <div
     className={`
-      flex items-start gap-2.5 glass-panel px-4 py-3 rounded-xl shadow-2xl
+      relative flex items-start gap-2.5 glass-panel px-4 py-3 rounded-xl shadow-2xl overflow-hidden
       border border-white/8 border-l-4 ${ACCENT[item.variant]}
       animate-in slide-in-from-right-4 fade-in duration-300
       min-w-[260px] max-w-[380px]
@@ -56,6 +56,14 @@ const ToastCard: React.FC<{ item: ToastItem; onDismiss: (id: string) => void }> 
     >
       <X size={13} />
     </button>
+    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/10">
+      <div 
+        className="h-full bg-blue-400/70"
+        style={{ 
+          animation: `pulse ${item.variant === 'error' ? '6s' : '4s'} linear forwards`
+        }} 
+      />
+    </div>
   </div>
 );
 
