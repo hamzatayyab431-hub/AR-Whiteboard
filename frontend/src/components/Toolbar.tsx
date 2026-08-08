@@ -28,7 +28,10 @@ export const Toolbar: React.FC = () => {
     addObject,
     activeSessionId,
     activeSessionName,
-    setSessionMeta
+    setSessionMeta,
+    setBrushSize,
+    setTool,
+    setOpacity
   } = useWhiteboardStore();
 
   const { toast } = useToast();
@@ -248,6 +251,31 @@ export const Toolbar: React.FC = () => {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Quick Brush Presets */}
+      <div className="hidden md:flex items-center gap-1 bg-black/25 p-1 rounded-xl border border-white/5 text-[11px] font-semibold">
+        <button
+          onClick={() => { setTool('brush'); setBrushSize(4); setOpacity(1.0); }}
+          className="px-2 py-1 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+          title="Fine Pen (4px)"
+        >
+          ✏️ Fine
+        </button>
+        <button
+          onClick={() => { setTool('brush'); setBrushSize(12); setOpacity(1.0); }}
+          className="px-2 py-1 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+          title="Bold Marker (12px)"
+        >
+          🖊️ Marker
+        </button>
+        <button
+          onClick={() => { setTool('highlighter'); setBrushSize(24); setOpacity(0.4); }}
+          className="px-2 py-1 rounded-lg text-yellow-300 hover:bg-white/10 transition-colors"
+          title="Highlighter (24px 40%)"
+        >
+          🖍️ Highlight
+        </button>
       </div>
 
       {/* History Controls */}
