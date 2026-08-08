@@ -744,10 +744,19 @@ export const WhiteboardCanvas: React.FC = () => {
     setTextInput(null);
   };
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'pen' && e.pressure > 0) {
+      const pressureMultiplier = Math.max(0.4, Math.min(2.0, e.pressure * 1.6));
+      brushSizeRef.current = Math.round(brushSize * pressureMultiplier);
+    }
+    handleMouseDown(e as unknown as React.MouseEvent);
+  };
+
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full relative cursor-crosshair overflow-hidden"
+      className="w-full h-full relative cursor-crosshair overflow-hidden touch-none"
+      onPointerDown={handlePointerDown}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
