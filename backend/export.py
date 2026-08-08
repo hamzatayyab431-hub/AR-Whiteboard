@@ -34,10 +34,16 @@ def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int 
             stroke_width = obj.get("width", 3)
             opacity = obj.get("opacity", 1.0)
             
-            # Build SVG path
-            path_d = f"M {points[0]['x']} {points[0]['y']}"
-            for p in points[1:]:
-                path_d += f" L {p['x']} {p['y']}"
+            # Build smooth SVG path using quadratic Bezier curves
+            if len(points) == 2:
+                path_d = f"M {points[0]['x']} {points[0]['y']} L {points[1]['x']} {points[1]['y']}"
+            else:
+                path_d = f"M {points[0]['x']} {points[0]['y']}"
+                for i in range(1, len(points) - 1):
+                    xc = (points[i]['x'] + points[i + 1]['x']) / 2.0
+                    yc = (points[i]['y'] + points[i + 1]['y']) / 2.0
+                    path_d += f" Q {points[i]['x']} {points[i]['y']} {xc} {yc}"
+                path_d += f" L {points[-1]['x']} {points[-1]['y']}"
                 
             svg_elements.append(
                 f'<path d="{path_d}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-opacity="{opacity}" stroke-linecap="round" stroke-linejoin="round" />'
