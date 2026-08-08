@@ -15,7 +15,7 @@ import { useWhiteboardStore } from '../store/useWhiteboardStore';
  *   1–7       → Switch between tools
  */
 export function useKeyboardShortcuts() {
-  const { undo, redo, deleteObject, selectedObjectId, toggleGrid, setTool } = useWhiteboardStore();
+  const { undo, redo, deleteObject, selectedObjectId, toggleGrid, setTool, brushSize, setBrushSize, setZoom, setPan, color, setColor } = useWhiteboardStore();
 
   useEffect(() => {
     const TOOL_KEYS: Record<string, Parameters<typeof setTool>[0]> = {
@@ -27,6 +27,8 @@ export function useKeyboardShortcuts() {
       '6': 'laser',
       '7': 'eraser',
     };
+
+    const PALETTE = ['#ffffff', '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore shortcuts when the user is typing in an input/textarea
@@ -64,6 +66,14 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // ── Recenter Zoom (Ctrl + 0) ──────────────────────────────────────────
+      if (ctrl && e.key === '0') {
+        e.preventDefault();
+        setZoom(1.0);
+        setPan({ x: 0, y: 0 });
+        return;
+      }
+
       // ── Delete selected object ────────────────────────────────────────────
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedObjectId) {
         e.preventDefault();
@@ -84,6 +94,26 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // ── Brush Size Adjustments ([ and ]) ─────────────────────────────────
+      if (!ctrl && e.key === '[') {
+        e.preventDefault();
+        setBrushSize(Math.max(1, brushSize - 2));
+        return;
+      }
+      if (!ctrl && e.key === ']') {
+        e.preventDefault();
+        setBrushSize(Math.min(50, brushSize + 2));
+        return;
+      }
+
+      // ── Color Cycle (C key) ───────────────────────────────────────────────
+      if (!ctrl && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        const nextIdx = (PALETTE.indexOf(color) + 1) % PALETTE.length;
+        setColor(PALETTE[nextIdx]);
+        return;
+      }
+
       // ── Tool switching (1–7) ──────────────────────────────────────────────
       if (!ctrl && TOOL_KEYS[e.key]) {
         e.preventDefault();
@@ -94,5 +124,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, deleteObject, selectedObjectId, toggleGrid, setTool]);
+  }, [undo, redo, deleteObject, selectedObjectId, toggleGrid, setTool, brushSize, setBrushSize, setZoom, setPan, color, setColor]);
 }
