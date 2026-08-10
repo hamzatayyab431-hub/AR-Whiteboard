@@ -69,20 +69,23 @@ export const Sidebar: React.FC = () => {
     <div className="absolute top-24 right-4 bottom-24 z-50 flex flex-col gap-4 pointer-events-none">
       {/* Tools Sidebar Panel */}
       <div className="glass-panel p-2.5 rounded-2xl flex flex-col gap-1.5 shadow-2xl pointer-events-auto">
-        {toolsList.map((t) => {
+        {toolsList.map((t, idx) => {
           const isActive = tool === t;
           return (
             <button
               key={t}
               onClick={() => handleToolClick(t)}
-              className={`p-3 rounded-xl hover-scale flex items-center justify-center transition-all ${
+              className={`p-3 rounded-xl hover-scale flex items-center justify-center transition-all relative ${
                 isActive 
                   ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] border border-blue-400/20' 
                   : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
-              title={t.charAt(0).toUpperCase() + t.slice(1) + ' Tool'}
+              title={`${t.charAt(0).toUpperCase() + t.slice(1)} Tool (${idx + 1})`}
             >
               {getToolIcon(t)}
+              <span className="absolute bottom-0.5 right-1 text-[8px] font-mono text-gray-400/80 font-bold">
+                {idx + 1}
+              </span>
             </button>
           );
         })}
