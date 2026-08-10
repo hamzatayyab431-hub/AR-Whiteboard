@@ -168,10 +168,14 @@ def get_settings():
     }
 
 @app.get("/sessions")
-async def get_all_sessions():
-    """Endpoint to retrieve a list of all saved whiteboard sessions."""
+async def get_all_sessions(
+    query: Optional[str] = Query(None, description="Search session name"),
+    limit: int = Query(50, ge=1, le=200, description="Max items to return"),
+    offset: int = Query(0, ge=0, description="Pagination offset")
+):
+    """Endpoint to retrieve a list of saved whiteboard sessions with pagination and search."""
     try:
-        sessions = await list_sessions()
+        sessions = await list_sessions(query=query, limit=limit, offset=offset)
         return sessions
     except Exception as e:
         logger.error(f"Failed to list sessions: {e}")

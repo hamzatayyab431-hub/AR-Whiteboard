@@ -41,12 +41,15 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-async def list_sessions() -> List[Dict[str, Any]]:
-    """Lists all available sessions, ordered by updated_at desc."""
+async def list_sessions(query: Optional[str] = None, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+    """Lists sessions ordered by updated_at desc, supporting query filtering and pagination."""
     async with async_session() as session:
-        result = await session.execute(
-            select(WhiteboardSession).order_by(WhiteboardSession.updated_at.desc())
-        )
+        stmt = select(WhiteboardSession)
+        if query:
+            stmt = stmt.where(WhiteboardSession.name.ilike(f"%{query}%"))
+        stmt = stmt.order_by(WhiteboardSession.updated_at.desc()).limit(limit).offset(offset)
+        
+        result = await session.execute(stmt)
         sessions = result.scalars().all()
         return [
             {
