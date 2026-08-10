@@ -14,7 +14,8 @@ export const StatusBar: React.FC = () => {
     calibrationData,
     objects,
     zoom,
-    selectedObjectId
+    selectedObjectId,
+    backendStatus
   } = useWhiteboardStore();
 
   const getToolDescription = () => {
@@ -82,6 +83,15 @@ export const StatusBar: React.FC = () => {
             {calibrationState === 'calibrated' 
               ? `CALIBRATED (${calibrationData.handSize.toFixed(0)}px)` 
               : 'DEFAULT MODEL'}
+          </span>
+        </div>
+
+        {/* Backend & Auto-Sync Status */}
+        <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+          <span className={`w-1.5 h-1.5 rounded-full ${backendStatus === 'online' ? 'bg-green-400' : 'bg-red-400'}`} />
+          <span className="text-gray-500">Sync:</span>
+          <span className={`font-bold uppercase text-[10px] ${backendStatus === 'online' ? 'text-green-400' : 'text-red-400'}`}>
+            {backendStatus === 'online' ? 'Connected' : 'Local Only'}
           </span>
         </div>
 
