@@ -142,7 +142,18 @@ def parse_and_solve_math(text: str) -> dict:
         raise ValueError("Empty expression")
         
     # Standardize common OCR artifacts for math expressions
-    clean_text = clean_text.replace("X", "x").replace("×", "*").replace("÷", "/").replace("²", "**2").replace("³", "**3")
+    clean_text = (
+        clean_text.replace("X", "x")
+        .replace("×", "*")
+        .replace("÷", "/")
+        .replace("²", "**2")
+        .replace("³", "**3")
+        .replace("^", "**")
+        .replace("√", "sqrt")
+        .replace("π", "pi")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
     
     latex_str = ""
     solution = None
