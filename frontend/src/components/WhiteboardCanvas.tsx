@@ -257,6 +257,9 @@ export const WhiteboardCanvas: React.FC = () => {
     // Draw Hand Pointer Cursor Overlay
     drawPointerCursor(ctx);
 
+    // Draw Viewport Mini-Map Overlay
+    drawMiniMap(ctx);
+
   }, [objects, pan, zoom, gridVisible, activePoints, isDrawing, pointerPos, laserPoints, color, brushSize, opacity, windowSize]);
 
   // Renders the dot grid background
@@ -416,6 +419,52 @@ export const WhiteboardCanvas: React.FC = () => {
     ctx.arc(scr.x, scr.y, 4, 0, 2 * Math.PI);
     ctx.fill();
     
+    ctx.restore();
+  };
+
+  // Draws HUD mini-map overlay indicator
+  const drawMiniMap = (ctx: CanvasRenderingContext2D) => {
+    if (objects.length === 0 && zoom === 1.0 && pan.x === 0 && pan.y === 0) return;
+
+    ctx.save();
+    const mmW = 120;
+    const mmH = 75;
+    const margin = 16;
+    const posX = margin;
+    const posY = windowSize.height - mmH - margin - 40;
+
+    // Background panel
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(posX, posY, mmW, mmH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // Calculate viewport bounds
+    const vW = windowSize.width / zoom;
+    const vH = windowSize.height / zoom;
+    const vX = -pan.x / zoom;
+    const vY = -pan.y / zoom;
+
+    // Scale to mini-map coordinates (map virtual 3000x2000 space)
+    const mapScale = mmW / 3000;
+    const mmVx = posX + (vX + 1500) * mapScale;
+    const mmVy = posY + (vY + 1000) * mapScale;
+    const mmVw = vW * mapScale;
+    const mmVh = vH * mapScale;
+
+    // Draw viewport rectangle in mini-map
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(
+      Math.max(posX, Math.min(posX + mmW - 5, mmVx)),
+      Math.max(posY, Math.min(posY + mmH - 5, mmVy)),
+      Math.min(mmW, mmVw),
+      Math.min(mmH, mmVh)
+    );
+
     ctx.restore();
   };
 
