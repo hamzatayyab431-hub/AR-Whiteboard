@@ -195,6 +195,31 @@ export const SettingsPanel: React.FC = () => {
             className="w-full h-1 bg-darkBorder rounded-lg appearance-none cursor-pointer accent-blue-500"
           />
         </div>
+
+        {/* Quick Tuning Presets */}
+        <div className="grid grid-cols-3 gap-1 pt-1">
+          <button
+            onClick={() => { setSmoothingMinCutoff(0.8); setSmoothingBeta(0.01); }}
+            className="py-1 px-1 bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 rounded border border-white/5 font-semibold"
+            title="Max Jitter Reduction"
+          >
+            Smooth
+          </button>
+          <button
+            onClick={() => { setSmoothingMinCutoff(1.2); setSmoothingBeta(0.03); }}
+            className="py-1 px-1 bg-blue-600/20 hover:bg-blue-600/30 text-[10px] text-blue-400 rounded border border-blue-500/30 font-semibold"
+            title="Optimal Writing Balance"
+          >
+            Balanced
+          </button>
+          <button
+            onClick={() => { setSmoothingMinCutoff(2.5); setSmoothingBeta(0.08); }}
+            className="py-1 px-1 bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 rounded border border-white/5 font-semibold"
+            title="Zero Latency High Speed"
+          >
+            Fast
+          </button>
+        </div>
       </div>
 
       {/* Hand Gesture Calibration */}
