@@ -154,3 +154,19 @@ async def delete_session(session_id: str) -> bool:
                 return False
             await session.delete(s)
             return True
+
+async def batch_delete_sessions(session_ids: List[str]) -> int:
+    """Deletes multiple sessions by their IDs and returns the count of deleted sessions."""
+    if not session_ids:
+        return 0
+    async with async_session() as session:
+        async with session.begin():
+            result = await session.execute(
+                select(WhiteboardSession).where(WhiteboardSession.id.in_(session_ids))
+            )
+            sessions = result.scalars().all()
+            count = len(sessions)
+            for s in sessions:
+                await session.delete(s)
+            return count
+

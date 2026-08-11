@@ -79,6 +79,18 @@ def test_delete_session_not_found():
     response = client.delete("/sessions/non-existent-uuid-999")
     assert response.status_code == 404
 
+def test_batch_delete_sessions_endpoint():
+    """Batch deletion endpoint should accept a list of session IDs and delete them."""
+    # First save two sessions
+    client.post("/save", json={"session_id": "b-del-1", "name": "S1", "objects": []})
+    client.post("/save", json={"session_id": "b-del-2", "name": "S2", "objects": []})
+
+    response = client.post("/sessions/batch-delete", json={"session_ids": ["b-del-1", "b-del-2"]})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["deleted_count"] == 2
+
 def test_export_pdf_endpoint():
     """PDF export should return application/pdf content type."""
     payload = {

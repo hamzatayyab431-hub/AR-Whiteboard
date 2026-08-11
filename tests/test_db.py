@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from backend.db import init_db, save_session, load_session, list_sessions, delete_session
+from backend.db import init_db, save_session, load_session, list_sessions, delete_session, batch_delete_sessions
 
 @pytest.mark.asyncio
 async def test_session_lifecycle():
@@ -59,3 +59,17 @@ async def test_session_lifecycle():
     # Confirm it is removed
     loaded_after = await load_session(session_id)
     assert loaded_after is None
+
+@pytest.mark.asyncio
+async def test_batch_delete_sessions():
+    await init_db()
+    s1 = "batch-test-1"
+    s2 = "batch-test-2"
+    await save_session(s1, "Batch 1", [])
+    await save_session(s2, "Batch 2", [])
+
+    deleted_count = await batch_delete_sessions([s1, s2])
+    assert deleted_count == 2
+    assert await load_session(s1) is None
+    assert await load_session(s2) is None
+

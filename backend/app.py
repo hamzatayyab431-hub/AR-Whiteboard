@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 from backend.config import settings
-from backend.db import init_db, list_sessions, load_session, save_session, delete_session
+from backend.db import init_db, list_sessions, load_session, save_session, delete_session, batch_delete_sessions
 from backend.ocr import run_ocr, parse_and_solve_math, init_ocr_engines
 from backend.export import export_to_image, export_to_svg, export_to_pdf
 from backend.utils import base64_to_cv2
@@ -29,6 +29,11 @@ class SaveRequest(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=36, description="UUID of the session")
     name: str = Field(..., min_length=1, max_length=100, description="Human-readable session name")
     objects: List[Dict[str, Any]] = Field(default_factory=list, max_length=10000, description="Canvas objects (max 10,000)")
+
+class BatchDeleteRequest(BaseModel):
+    session_ids: List[str] = Field(..., min_length=1, max_length=100, description="List of session IDs to delete")
+
+
 
 class ExportRequest(BaseModel):
     objects: List[Dict[str, Any]] = Field(default_factory=list, max_length=10000)
@@ -222,6 +227,17 @@ async def remove_session(session_id: str):
     except Exception as e:
         logger.error(f"Failed to delete session {session_id}: {e}")
         raise HTTPException(status_code=500, detail="Database deletion failed")
+
+@app.post("/sessions/batch-delete")
+async def batch_remove_sessions(payload: BatchDeleteRequest):
+    """Endpoint to delete multiple whiteboard sessions in a single request."""
+    try:
+        deleted_count = await batch_delete_sessions(payload.session_ids)
+        return {"status": "success", "deleted_count": deleted_count}
+    except Exception as e:
+        logger.error(f"Failed to batch delete sessions: {e}")
+        raise HTTPException(status_code=500, detail="Batch deletion failed")
+
 
 @app.post("/ocr")
 def process_ocr(payload: OCRRequest):
