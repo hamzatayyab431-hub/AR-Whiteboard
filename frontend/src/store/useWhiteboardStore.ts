@@ -55,6 +55,9 @@ interface WhiteboardState {
   zoom: number;
   pan: Point;
   gridVisible: boolean;
+  snapToGrid: boolean;
+  gridSize: number;
+
   
   // Brush/Tool Configuration
   tool: ToolType;
@@ -108,6 +111,9 @@ interface WhiteboardState {
   setZoom: (zoom: number | ((z: number) => number)) => void;
   setPan: (pan: Point | ((p: Point) => Point)) => void;
   toggleGrid: () => void;
+  toggleSnapToGrid: () => void;
+  setGridSize: (size: number) => void;
+
   
   setPointerPos: (pos: Point) => void;
   setGesture: (gesture: string, confidence: number) => void;
@@ -133,6 +139,9 @@ const defaultState = {
   zoom: 1.0,
   pan: { x: 0, y: 0 },
   gridVisible: true,
+  snapToGrid: false,
+  gridSize: 20,
+
   tool: 'brush' as ToolType,
   color: '#ffffff',
   brushSize: 5,
@@ -268,6 +277,9 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   },
   
   toggleGrid: () => set((state) => ({ gridVisible: !state.gridVisible })),
+  toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
+  setGridSize: (gridSize) => set({ gridSize: Math.max(5, Math.min(100, gridSize)) }),
+
   
   setPointerPos: (pointerPos) => set({ pointerPos }),
   setGesture: (gesture, confidence) => set({ gesture, confidence }),
