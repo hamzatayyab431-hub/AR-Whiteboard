@@ -15,8 +15,11 @@ export const StatusBar: React.FC = () => {
     objects,
     zoom,
     selectedObjectId,
-    backendStatus
+    backendStatus,
+    gridVisible,
+    snapToGrid
   } = useWhiteboardStore();
+
 
   const getToolDescription = () => {
     switch (tool) {
@@ -63,6 +66,18 @@ export const StatusBar: React.FC = () => {
           <span className="text-gray-500">Zoom:</span>
           <span className="text-purple-300 font-bold font-mono">{zoomPercent}%</span>
         </div>
+
+        {/* Grid & Snap mode indicator */}
+        <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
+          <span className="text-gray-500">Grid:</span>
+          <span className={`font-bold text-[10px] ${gridVisible ? 'text-blue-400' : 'text-gray-500'}`}>
+            {gridVisible ? 'ON' : 'OFF'}
+          </span>
+          {snapToGrid && (
+            <span className="text-[10px] text-cyan-400 font-bold ml-1">(SNAP)</span>
+          )}
+        </div>
+
 
         {/* Objects count with color coding */}
         <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
