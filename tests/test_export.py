@@ -151,3 +151,12 @@ class TestImageExport:
         pdf_bytes = export_to_pdf([])
         assert isinstance(pdf_bytes, bytes)
         assert pdf_bytes[:5] == b"%PDF-"
+
+    def test_export_with_watermark_and_no_grid(self):
+        svg_wm = export_to_svg([], draw_grid=False, watermark_text="Property of AR Whiteboard")
+        assert 'id="grid"' not in svg_wm
+
+        img_bytes = export_to_image([], format="PNG", draw_grid=False, watermark_text="Sample Watermark")
+        assert isinstance(img_bytes, bytes)
+        assert len(img_bytes) > 0
+

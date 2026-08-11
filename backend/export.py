@@ -10,7 +10,14 @@ def _sanitize_svg_text(text: str) -> str:
     """Escapes HTML/XML entities to prevent XSS injection in SVG output."""
     return html.escape(text, quote=True)
 
-def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int = 1080, background_theme: str = "dark") -> str:
+def export_to_svg(
+    objects: List[Dict[str, Any]], 
+    width: int = 1920, 
+    height: int = 1080, 
+    background_theme: str = "dark",
+    draw_grid: bool = True,
+    watermark_text: str = ""
+) -> str:
     """Exports canvas objects to a vector SVG string."""
     bg_color = "#ffffff" if background_theme == "light" else "#121212"
     grid_color = "#e5e7eb" if background_theme == "light" else "#2a2a2a"
@@ -18,13 +25,15 @@ def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int 
     svg_elements = []
     svg_elements.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" height="100%" style="background-color: {bg_color};">')
     
-    # Grid lines overlay (optional, matches frontend layout)
-    svg_elements.append('<defs>')
-    svg_elements.append('  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">')
-    svg_elements.append(f'    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="{grid_color}" stroke-width="1"/>')
-    svg_elements.append('  </pattern>')
-    svg_elements.append('</defs>')
-    svg_elements.append('<rect width="100%" height="100%" fill="url(#grid)" />')
+    if draw_grid:
+        # Grid lines overlay (optional, matches frontend layout)
+        svg_elements.append('<defs>')
+        svg_elements.append('  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">')
+        svg_elements.append(f'    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="{grid_color}" stroke-width="1"/>')
+        svg_elements.append('  </pattern>')
+        svg_elements.append('</defs>')
+        svg_elements.append('<rect width="100%" height="100%" fill="url(#grid)" />')
+
 
     for obj in objects:
         obj_type = obj.get("type")
@@ -109,18 +118,25 @@ def export_to_svg(objects: List[Dict[str, Any]], width: int = 1920, height: int 
     svg_elements.append("</svg>")
     return "\n".join(svg_elements)
 
-def render_to_pil(objects: List[Dict[str, Any]], width: int = 1920, height: int = 1080) -> Image.Image:
+def render_to_pil(
+    objects: List[Dict[str, Any]], 
+    width: int = 1920, 
+    height: int = 1080,
+    draw_grid: bool = True,
+    watermark_text: str = ""
+) -> Image.Image:
     """Renders the list of objects onto a Pillow Image (dark background)."""
     # Create image with dark slate background
     img = Image.new("RGBA", (width, height), (18, 18, 18, 255))
     draw = ImageDraw.Draw(img)
     
-    # Draw simple grid pattern
-    grid_spacing = 40
-    for x in range(0, width, grid_spacing):
-        draw.line([(x, 0), (x, height)], fill=(42, 42, 42, 255), width=1)
-    for y in range(0, height, grid_spacing):
-        draw.line([(0, y), (width, y)], fill=(42, 42, 42, 255), width=1)
+    if draw_grid:
+        # Draw simple grid pattern
+        grid_spacing = 40
+        for x in range(0, width, grid_spacing):
+            draw.line([(x, 0), (x, height)], fill=(42, 42, 42, 255), width=1)
+        for y in range(0, height, grid_spacing):
+            draw.line([(0, y), (width, y)], fill=(42, 42, 42, 255), width=1)
 
     for obj in objects:
         obj_type = obj.get("type")
@@ -191,19 +207,31 @@ def render_to_pil(objects: List[Dict[str, Any]], width: int = 1920, height: int 
             font_size = int(obj.get("fontSize", 20))
             
             try:
-                # Attempt to load a scalable default font at the requested size
                 font = ImageFont.load_default(size=font_size)
             except (TypeError, Exception):
-                # Older Pillow versions don't support size param; fall back
                 font = ImageFont.load_default()
                 
             draw.text((x, y), content, fill=color, font=font)
 
+    if watermark_text:
+        try:
+            wm_font = ImageFont.load_default(size=16)
+        except (TypeError, Exception):
+            wm_font = ImageFont.load_default()
+        draw.text((width - 200, height - 30), watermark_text, fill=(255, 255, 255, 120), font=wm_font)
+
     return img
 
-def export_to_image(objects: List[Dict[str, Any]], format: str = "PNG", width: int = 1920, height: int = 1080) -> bytes:
+def export_to_image(
+    objects: List[Dict[str, Any]], 
+    format: str = "PNG", 
+    width: int = 1920, 
+    height: int = 1080,
+    draw_grid: bool = True,
+    watermark_text: str = ""
+) -> bytes:
     """Renders objects and exports to a PNG/JPEG bytes stream with custom dimensions."""
-    img = render_to_pil(objects, width, height)
+    img = render_to_pil(objects, width, height, draw_grid=draw_grid, watermark_text=watermark_text)
     output = io.BytesIO()
     
     # JPEG does not support alpha channel transparency
@@ -215,12 +243,19 @@ def export_to_image(objects: List[Dict[str, Any]], format: str = "PNG", width: i
         
     return output.getvalue()
 
-def export_to_pdf(objects: List[Dict[str, Any]], width: int = 1920, height: int = 1080) -> bytes:
+def export_to_pdf(
+    objects: List[Dict[str, Any]], 
+    width: int = 1920, 
+    height: int = 1080,
+    draw_grid: bool = True,
+    watermark_text: str = ""
+) -> bytes:
     """Renders objects to PDF pages and returns as bytes with custom dimensions."""
     # Convert PNG image to PDF
-    img = render_to_pil(objects, width, height)
+    img = render_to_pil(objects, width, height, draw_grid=draw_grid, watermark_text=watermark_text)
     img_rgb = img.convert("RGB")
     
     output = io.BytesIO()
     img_rgb.save(output, format="PDF", resolution=100.0)
     return output.getvalue()
+
