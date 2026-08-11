@@ -1,5 +1,6 @@
 import pytest
-from backend.ocr import parse_and_solve_math
+import numpy as np
+from backend.ocr import parse_and_solve_math, run_ocr
 
 def test_arithmetic_solving():
     # Test simple addition
@@ -31,3 +32,9 @@ def test_invalid_math_handling():
     assert res["success"] is False
     assert res["result"] is None
     assert "hello" in res["latex"]
+
+def test_run_ocr_confidence_filtering():
+    dummy_img = np.ones((100, 100, 3), dtype=np.uint8) * 255
+    res = run_ocr(dummy_img, min_confidence=0.5)
+    assert isinstance(res, str)
+

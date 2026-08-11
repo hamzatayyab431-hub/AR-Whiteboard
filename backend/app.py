@@ -44,6 +44,8 @@ class ExportRequest(BaseModel):
 
 class OCRRequest(BaseModel):
     image: str = Field(..., max_length=10_485_760, description="Base64 encoded image (max ~10MB)")
+    min_confidence: Optional[float] = Field(default=0.0, ge=0.0, le=1.0, description="Minimum OCR confidence threshold")
+
 
 # Lifespan manager for FastAPI
 @asynccontextmanager
@@ -247,7 +249,8 @@ def process_ocr(payload: OCRRequest):
         cv2_img = base64_to_cv2(payload.image)
         if cv2_img is None:
             raise HTTPException(status_code=400, detail="Invalid image encoding or empty buffer")
-        recognized_text = run_ocr(cv2_img)
+        recognized_text = run_ocr(cv2_img, min_confidence=payload.min_confidence or 0.0)
+
         
         result = {
             "text": recognized_text,

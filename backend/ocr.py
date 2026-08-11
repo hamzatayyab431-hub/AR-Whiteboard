@@ -96,7 +96,7 @@ def preprocess_canvas_image(img: np.ndarray) -> np.ndarray:
     return processed_img
 
 @timeit
-def run_ocr(img: np.ndarray) -> str:
+def run_ocr(img: np.ndarray, min_confidence: float = 0.0) -> str:
     """Runs OCR on the preprocessed image using EasyOCR, pytesseract, or a fallback."""
     if img is None or not isinstance(img, np.ndarray) or img.size == 0:
         logger.warning("run_ocr received invalid or None image. Returning fallback.")
@@ -113,9 +113,11 @@ def run_ocr(img: np.ndarray) -> str:
         # Method 1: EasyOCR
         if settings.OCR_ENGINE == "easyocr" and easyocr_reader is not None:
             results = easyocr_reader.readtext(processed)
-            text = " ".join([res[1] for res in results])
+            valid_texts = [res[1] for res in results if len(res) < 3 or res[2] >= min_confidence]
+            text = " ".join(valid_texts)
             logger.info(f"EasyOCR Result: '{text}'")
             return text.strip()
+
             
         # Method 2: Pytesseract
         if pytesseract_available:
